@@ -47,7 +47,7 @@ class Game : public LogicNode
 	nctl::UniquePtr<Body> obstacle3_;
 
 	nctl::UniquePtr<nc::Sprite> obstacle1Gfx_;
-#if WETPAPER_DEBUG
+#if NCPROJECT_DEBUG
 	nctl::UniquePtr<nc::Sprite> obstacle2Gfx_;
 	nctl::UniquePtr<nc::Sprite> obstacle3Gfx_;
 #endif

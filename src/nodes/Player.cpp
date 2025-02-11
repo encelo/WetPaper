@@ -1,5 +1,5 @@
 #include <ncine/config.h>
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	#include <ncine/imgui.h>
 #endif
 
@@ -17,7 +17,7 @@
 #include <ncine/RectAnimation.h>
 
 namespace {
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	const ImVec4 Green = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
 	const ImVec4 Red = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
 	nctl::String auxString(256);
@@ -41,7 +41,7 @@ Player::Player(nc::SceneNode *parent, nctl::String name, int playerIndex)
 		if (playerIndex == 0)
 			body_->setPosition(body_->colliderHalfSize_.x * 2.0f, body_->colliderHalfSize_.y * 2.1f);
 		if (playerIndex == 1)
-			body_->setPosition(nc::theApplication().width() - body_->colliderHalfSize_.x * 2.0f, body_->colliderHalfSize_.y * 2.1f);
+			body_->setPosition(nc::theApplication().gfxDevice().width() - body_->colliderHalfSize_.x * 2.0f, body_->colliderHalfSize_.y * 2.1f);
 
 		body_->linearVelocityDamping_ = 0.01f;
 		body_->maxVelocity_ = 2000.0f;
@@ -251,7 +251,7 @@ void Player::onTick(float deltaTime)
 
 void Player::drawGui()
 {
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	auxString.format("Player %d", index_);
 	if (ImGui::TreeNodeEx(auxString.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{

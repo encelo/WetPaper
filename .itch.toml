@@ -1,0 +1,21 @@
+[[actions]]
+name = "play"
+path = "bin/wet_paper.exe"
+platform = "windows"
+
+[[actions]]
+name = "play"
+path = "WetPaper.app"
+platform = "osx"
+
+[[actions]]
+name = "play"
+path = "launch.sh"
+platform = "linux"
+
+[[prereqs]]
+name = "vcredist-2019-x64"
+
+[[actions]]
+name = "forums"
+path = "https://encelo.itch.io/wet_paper/community"

@@ -22,6 +22,7 @@ class MyEventHandler :
 	void onInit() override;
 	void onShutdown() override;
 	void onFrameStart() override;
+	void onChangeScalingFactor(float factor) override;
 	void onKeyReleased(const nc::KeyboardEvent &event) override;
 
 	void requestMenu();

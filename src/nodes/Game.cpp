@@ -1,5 +1,5 @@
 #include <ncine/config.h>
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	#include <ncine/imgui.h>
 #endif
 
@@ -116,7 +116,7 @@ void Game::onTick(float deltaTime)
 
 void Game::drawGui()
 {
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	if (ImGui::Button("RETURN TO MENU"))
 		eventHandler_->requestMenu();
 
@@ -164,13 +164,24 @@ void Game::playSound()
 /// Loads the main scene of the game
 void Game::loadScene()
 {
-	const float screenWidth = nc::theApplication().width();
-	const float screenHeight = nc::theApplication().height();
+#ifndef __EMSCRIPTEN__
+	const float screenWidth = nc::theApplication().gfxDevice().width();
+	const float screenHeight = nc::theApplication().gfxDevice().height();
+#else
+	const float screenWidth = nc::theApplication().gfxDevice().drawableWidth();
+	const float screenHeight = nc::theApplication().gfxDevice().drawableHeight();
+#endif
 	const nc::Vector2f screenTopRight(screenWidth, screenHeight);
+
+	const float windowScaling = nc::theApplication().gfxDevice().windowScalingFactor();
+	this->setScale(windowScaling);
 
 	background_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::Background));
 	background_->setPosition(screenTopRight * 0.5f);
 	background_->setLayer(Cfg::Layers::Background);
+#ifdef __EMSCRIPTEN__
+	background_->setSize(screenTopRight);
+#endif
 
 	redBar_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::RedBar));
 	redBarFill_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::RedBarFill));
@@ -232,7 +243,7 @@ void Game::loadScene()
 	obstacle2_ = nctl::makeUnique<Body>(this, "Obstacle", ColliderKind::AABB, BodyKind::STATIC, BodyId::STATIC);
 	obstacle2_->setPosition(0.0f, 0.0f);
 	obstacle2_->colliderHalfSize_ = nc::Vector2f(Cfg::Game::FloorHeight, 4096.0f);
-#if WETPAPER_DEBUG
+#if NCPROJECT_DEBUG
 	obstacle2Gfx_ = nctl::makeUnique<nc::Sprite>(obstacle2_.get(), nullptr);
 	obstacle2Gfx_->setSize(obstacle2_->colliderHalfSize_ * 2.0f);
 	obstacle2Gfx_->setColor(nc::Colorf(1.0f, 1.0f, 1.0f, 0.2f));
@@ -242,7 +253,7 @@ void Game::loadScene()
 	obstacle3_ = nctl::makeUnique<Body>(this, "Obstacle", ColliderKind::AABB, BodyKind::STATIC, BodyId::STATIC);
 	obstacle3_->setPosition(screenWidth, screenHeight);
 	obstacle3_->colliderHalfSize_ = nc::Vector2f(Cfg::Game::FloorHeight, 4096.0f);
-#if WETPAPER_DEBUG
+#if NCPROJECT_DEBUG
 	obstacle3Gfx_ = nctl::makeUnique<nc::Sprite>(obstacle3_.get(), nullptr);
 	obstacle3Gfx_->setSize(obstacle3_->colliderHalfSize_ * 2.0f);
 	obstacle3Gfx_->setColor(nc::Colorf(1.0f, 1.0f, 1.0f, 0.2f));
@@ -259,8 +270,8 @@ void Game::spawnBubbles()
 
 void Game::spawnBubble()
 {
-	const float screenWidth = nc::theApplication().width();
-	const float screenHeight = nc::theApplication().height();
+	const float screenWidth = nc::theApplication().gfxDevice().width();
+	const float screenHeight = nc::theApplication().gfxDevice().height();
 
 	const nc::Vector2f pos = nc::Vector2f(lerp(screenWidth * 0.1f, screenWidth - screenWidth * 0.1f, nc::random().real()),
 	                                      screenHeight + lerp(screenHeight * 0.2f, screenHeight * 1.0f, nc::random().real()));

@@ -102,8 +102,8 @@ const char *Body::colliderKindName() const
 
 void Body::onPostTick(nc::RenderQueue &renderQueue, unsigned int &visitOrderIndex)
 {
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
-	const nc::Vector2f center = absPosition();
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
+	const nc::Vector2f center = position() + parent()->position(); // works with scaling factor
 	const nc::Color col = nc::Color(0, 255, 0, 255);
 
 	switch (colliderKind_)
@@ -174,7 +174,7 @@ bool Body::isGrounded()
 
 void Body::drawGui()
 {
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	ImGui::BulletText("Body - pos: <%0.2f, %0.2f>, vel: <%0.2f, %0.2f>, %s (%s)",
 	                  position_.x, position_.y, linearVelocity_.x, linearVelocity_.y,
 	                  bodyKindName(), bodyIdName());

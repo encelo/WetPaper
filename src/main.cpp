@@ -17,7 +17,7 @@
 #include <ncine/AppConfiguration.h>
 #include <ncine/IFile.h>
 
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	#include <ncine/imgui.h>
 	#include <nctl/CString.h>
 	#include <nctl/StaticString.h>
@@ -104,7 +104,9 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	config.resolution = Cfg::Game::Resolution;
 	config.consoleLogLevel = nc::ILogger::LogLevel::OFF;
 #else
+	#ifndef __EMSCRIPTEN__
 	config.resizable = true;
+	#endif
 	config.resolution = nc::Vector2i(ws.rect.w, ws.rect.h);
 	config.consoleLogLevel = nc::ILogger::LogLevel::INFO;
 #endif
@@ -112,7 +114,7 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 
 void MyEventHandler::onInit()
 {
-#ifdef WETPAPER_DEBUG
+#ifdef NCPROJECT_DEBUG
 	nc::theApplication().setAutoSuspension(false);
 #endif
 
@@ -146,26 +148,52 @@ void MyEventHandler::onFrameStart()
 		requestGameTransition_ = false;
 	}
 
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
-	if (showInterface && ImGui::Begin("Wet Paper", &showInterface))
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
+	if (showInterface)
 	{
-		const float deltaTime = nc::theApplication().interval();
-		ImGui::Text("Delta time: %0.3f ms (%0.1f FPS)", deltaTime * 1000.0f, 1.0f / deltaTime);
+		const float scalingFactor = nc::theApplication().gfxDevice().windowScalingFactor();
+		if (ImGui::GetIO().FontGlobalScale != scalingFactor)
+		{
+			ImGui::GetIO().FontGlobalScale = scalingFactor;
+			ImGui::GetStyle() = ImGuiStyle();
+			ImGui::GetStyle().ScaleAllSizes(scalingFactor);
+		}
 
-		if (menu_ != nullptr)
-			menu_->drawGui();
-		if (game_ != nullptr)
-			game_->drawGui();
+		if (ImGui::Begin("Wet Paper", &showInterface))
+		{
+			const float scaling = nc::theApplication().gfxDevice().windowScalingFactor();
+			if (scaling != 1.0f)
+				ImGui::Text("Window scaling factor: %.2f", scaling);
+
+			const float deltaTime = nc::theApplication().interval();
+			ImGui::Text("Delta time: %0.3f ms (%0.1f FPS)", deltaTime * 1000.0f, 1.0f / deltaTime);
+
+			if (menu_ != nullptr)
+				menu_->drawGui();
+			if (game_ != nullptr)
+				game_->drawGui();
+
+			if (ImGui::Button("QUIT"))
+				nc::theApplication().quit();
+		}
+		ImGui::End();
 	}
-	ImGui::End();
 #endif
+}
+
+void MyEventHandler::onChangeScalingFactor(float factor)
+{
+	if (menu_ != nullptr)
+		menu_->setScale(factor);
+	if (game_ != nullptr)
+		game_->setScale(factor);
 }
 
 void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)
 {
 	if (event.mod & nc::KeyMod::CTRL && event.sym == nc::KeySym::H)
 		showInterface = !showInterface;
-	else if (event.sym == nc::KeySym::ESCAPE)
+	else if (event.mod & nc::KeyMod::CTRL && event.sym == nc::KeySym::Q)
 		nc::theApplication().quit();
 }
 
