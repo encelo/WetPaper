@@ -18,7 +18,12 @@ You can find the original version here: https://globalgamejam.org/games/2025/pap
 - Clean code (variable renaming, dead code removal, bug fixing)
 - Add a `Config` namespace to remove magic numbers and strings
 - Fill `NCPROJECT` variables
+- Add a CTRL + H shortcut to show/hide the ImGui debug interface
 - Add a game icon
 - Add GitHub Actions YAML scripts
+
+- Add support for window scaling factor
+- Use the new `NCPROJECT_DEBUG` compiler definition
+- Change the quit keyboard shortcut to CTRL + Q
 
 

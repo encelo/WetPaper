@@ -1,5 +1,5 @@
 #include <ncine/config.h>
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	#include <ncine/imgui.h>
 #endif
 
@@ -76,7 +76,7 @@ void Bubble::touched()
 
 void Bubble::drawGui(unsigned int index)
 {
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	ImGui::Text("Bubble #%d: <%0.1f, %0.1f>, Grounded: %s", index, body_->position().x, body_->position().y, body_->isGrounded() ? "yes" : "no");
 	body_->drawGui();
 #endif
