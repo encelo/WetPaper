@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ncine/config.h>
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	#include <ncine/imgui.h>
 #endif
 
@@ -21,8 +21,8 @@ class DebugDraw
 
 	static inline void Line(nc::Vector2f from, nc::Vector2f to, nc::Color col)
 	{
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
-		const float height = nc::theApplication().height();
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
+		const float height = nc::theApplication().gfxDevice().height();
 		ImGui::GetForegroundDrawList()->AddLine(ImVec2(from.x, height - from.y), ImVec2(to.x, height - to.y), col.abgr());
 #endif
 	}
@@ -34,8 +34,8 @@ class DebugDraw
 
 	static inline void Circle(nc::Vector2f center, float radius, nc::Color col)
 	{
-#if NCINE_WITH_IMGUI && defined(WETPAPER_DEBUG)
-		const float height = nc::theApplication().height();
+#if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
+		const float height = nc::theApplication().gfxDevice().height();
 		ImGui::GetForegroundDrawList()->AddCircle(ImVec2(center.x, height - center.y), radius, col.abgr());
 #endif
 	}
