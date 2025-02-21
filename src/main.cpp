@@ -161,7 +161,7 @@ void MyEventHandler::onFrameStart()
 			if (scaling != 1.0f)
 				ImGui::Text("Window scaling factor: %.2f", scaling);
 
-			const float deltaTime = nc::theApplication().interval();
+			const float deltaTime = nc::theApplication().frameTime();
 			ImGui::Text("Delta time: %0.3f ms (%0.1f FPS)", deltaTime * 1000.0f, 1.0f / deltaTime);
 
 			if (menu_ != nullptr)

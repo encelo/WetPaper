@@ -33,7 +33,6 @@ namespace {
 Player::Player(nc::SceneNode *parent, nctl::String name, int playerIndex)
     : LogicNode(parent, name),
       index_(playerIndex), stamina_(1.0f), points_(0),
-      prevJumpPressed_(false), prevDashPressed_(false),
       dashEnergy_(0.0f), dashDir_(0.0f, 0.0f), jumpCount_(0)
 {
 	// Setup the physics body
@@ -82,34 +81,34 @@ void Player::onTick(float deltaTime)
 		const nc::IInputManager &input = nc::theApplication().inputManager();
 		const nc::KeyboardState &ks = input.keyboardState();
 
-		bool leftPressed = false;
-		bool rightPressed = false;
+		bool leftDown = false;
+		bool rightDown= false;
 		bool jumpPressed = false;
 		bool dashPressed = false;
 
 		if (index_ == 0)
 		{
-			leftPressed = ks.isKeyDown(nc::KeySym::A);
-			rightPressed = ks.isKeyDown(nc::KeySym::D);
-			jumpPressed = ks.isKeyDown(nc::KeySym::W);
-			dashPressed = ks.isKeyDown(nc::KeySym::S);
+			leftDown = ks.isKeyDown(nc::KeySym::A);
+			rightDown = ks.isKeyDown(nc::KeySym::D);
+			jumpPressed = ks.isKeyPressed(nc::KeySym::W);
+			dashPressed = ks.isKeyPressed(nc::KeySym::S);
 		}
 		else
 		{
-			leftPressed = ks.isKeyDown(nc::KeySym::J);
-			rightPressed = ks.isKeyDown(nc::KeySym::L);
-			jumpPressed = ks.isKeyDown(nc::KeySym::I);
-			dashPressed = ks.isKeyDown(nc::KeySym::K);
+			leftDown = ks.isKeyDown(nc::KeySym::J);
+			rightDown = ks.isKeyDown(nc::KeySym::L);
+			jumpPressed = ks.isKeyPressed(nc::KeySym::I);
+			dashPressed = ks.isKeyPressed(nc::KeySym::K);
 		}
 
 		if (input.isJoyPresent(index_))
 		{
 			const nc::JoyMappedState &state = input.joyMappedState(index_);
 			if (state.axisValue(nc::AxisName::LX) < -0.5f)
-				leftPressed = true;
+				leftDown = true;
 
 			if (state.axisValue(nc::AxisName::LX) > 0.5f)
-				rightPressed = true;
+				rightDown = true;
 
 			if (state.isButtonPressed(nc::ButtonName::A))
 				jumpPressed = true;
@@ -117,12 +116,6 @@ void Player::onTick(float deltaTime)
 			if (state.isButtonPressed(nc::ButtonName::B))
 				dashPressed = true;
 		}
-
-		const bool jumpDown = !prevJumpPressed_ && jumpPressed;
-		const bool dashDown = !prevDashPressed_ && dashPressed;
-
-		prevJumpPressed_ = jumpPressed;
-		prevDashPressed_ = dashPressed;
 
 		if (body_->isGrounded())
 		{
@@ -135,7 +128,7 @@ void Player::onTick(float deltaTime)
 			body_->linearVelocityDamping_ = 0.2f; // drag active
 			body_->gravity_ = nc::Vector2f::Zero; // no gravity
 
-			if (leftPressed)
+			if (leftDown)
 			{
 				if (body_->linearVelocity_.x > 0.0f)
 					body_->linearVelocity_.x *= 0.8f;
@@ -143,7 +136,7 @@ void Player::onTick(float deltaTime)
 				body_->linearVelocity_ += nc::Vector2f(-1.0f, 0.0f) * maxGroundMoveSpeed;
 			}
 
-			if (rightPressed)
+			if (rightDown)
 			{
 				if (body_->linearVelocity_.x < 0.0f)
 					body_->linearVelocity_.x *= 0.8f;
@@ -151,7 +144,7 @@ void Player::onTick(float deltaTime)
 				body_->linearVelocity_ += nc::Vector2f(1.0f, 0.0f) * maxGroundMoveSpeed;
 			}
 
-			if (jumpDown)
+			if (jumpPressed)
 			{
 				jumpCount_++;
 
@@ -164,7 +157,7 @@ void Player::onTick(float deltaTime)
 			body_->linearVelocityDamping_ = 1.0f; // no drag
 			body_->gravity_ = nc::Vector2f(0.0f, -1250.0f); // normal gravity
 
-			if (leftPressed)
+			if (leftDown)
 			{
 				if (body_->linearVelocity_.x > 0.0f)
 					body_->linearVelocity_.x *= 0.8f;
@@ -172,7 +165,7 @@ void Player::onTick(float deltaTime)
 				body_->linearVelocity_ += nc::Vector2f(-1.0f, 0.0f) * maxAirMoveSpeed;
 			}
 
-			if (rightPressed)
+			if (rightDown)
 			{
 				if (body_->linearVelocity_.x < 0.0f)
 					body_->linearVelocity_.x *= 0.8f;
@@ -180,7 +173,7 @@ void Player::onTick(float deltaTime)
 				body_->linearVelocity_ += nc::Vector2f(1.0f, 0.0f) * maxAirMoveSpeed;
 			}
 
-			if (jumpDown && jumpCount_ < maxJumps)
+			if (jumpPressed && jumpCount_ < maxJumps)
 			{
 				jumpCount_++;
 
@@ -189,18 +182,18 @@ void Player::onTick(float deltaTime)
 			}
 		}
 
-		if (dashDown && stamina_ >= dashStaminaCost)
+		if (dashPressed && stamina_ >= dashStaminaCost)
 		{
 			stamina_ -= dashStaminaCost;
 			dashEnergy_ = dashDuration;
 
-			if (leftPressed)
+			if (leftDown)
 			{
 				dashDir_ = nc::Vector2f(-1.0f, 0.0f);
 				if (body_->linearVelocity_.x > 0)
 					body_->linearVelocity_.x *= 0.5f;
 			}
-			else if (rightPressed)
+			else if (rightDown)
 			{
 				dashDir_ = nc::Vector2f(1.0f, 0.0f);
 				if (body_->linearVelocity_.x < 0)

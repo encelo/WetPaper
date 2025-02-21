@@ -41,9 +41,6 @@ class Player : public LogicNode
 	nctl::UniquePtr<Body> body_;
 	nctl::UniquePtr<nc::AnimatedSprite> sprite_;
 
-	bool prevJumpPressed_;
-	bool prevDashPressed_;
-
 	float dashEnergy_;
 	nc::Vector2f dashDir_;
 
