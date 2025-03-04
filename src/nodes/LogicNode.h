@@ -19,14 +19,6 @@ class LogicNode : public nc::SceneNode
 	virtual void onPostTick(nc::RenderQueue &renderQueue, unsigned int &visitOrderIndex) {}
 };
 
-static inline nc::Vector2f normalizeOrZero(nc::Vector2f v)
-{
-	if (v.sqrLength() == 0)
-		return nc::Vector2f::Zero;
-
-	return v.normalized();
-}
-
 static inline float lerp(float v0, float v1, float t)
 {
 	return fmaf(t, v1, fmaf(-t, v0, v0));

@@ -108,7 +108,7 @@ void Body::integrate(float dT)
 
 	// Limit maximum velocity
 	if (linearVelocity_.sqrLength() > (maxVelocity_ * maxVelocity_))
-		linearVelocity_ = normalizeOrZero(linearVelocity_) * maxVelocity_;
+		linearVelocity_ = linearVelocity_.normalized() * maxVelocity_;
 
 	setPosition(position_);
 }
@@ -189,7 +189,7 @@ void Body::circleVsCircleCollision(Body *bodyA, Body *bodyB)
 
 	// Add to collision pairs
 	{
-		const CollisionPair pair = { bodyA, bodyB, normalizeOrZero(aToB) };
+		const CollisionPair pair = { bodyA, bodyB, aToB.normalized() };
 
 		for (const CollisionPair &it : Body::Collisions)
 		{
@@ -202,7 +202,7 @@ void Body::circleVsCircleCollision(Body *bodyA, Body *bodyB)
 
 	const float penetrationAmount = minDist - sqrtf(dist2);
 
-	aToB = normalizeOrZero(aToB);
+	aToB.normalize();
 
 	const float factor = (bodyA && bodyB) ? 0.5f : 1.0f;
 	if (bodyA)
@@ -260,7 +260,7 @@ void Body::circleVsAabbCollision(Body *bodyA, Body *bodyB)
 		contactNormal.y = -1.0f;
 	}
 
-	contactNormal = normalizeOrZero(contactNormal);
+	contactNormal.normalize();
 
 	// Check if we're in contact
 	const float closestPointToCircleRelPosSquared = (closestPoint - circleRelPos).sqrLength();
