@@ -9,6 +9,8 @@
 #include "main.h"
 #include "Config.h"
 #include "ResourceManager.h"
+#include "InputActions.h"
+#include "nodes/SplashScreen.h"
 #include "nodes/Menu.h"
 #include "nodes/Game.h"
 
@@ -118,8 +120,14 @@ void MyEventHandler::onInit()
 	nc::theApplication().setAutoSuspension(false);
 #endif
 
+	inputActionsMut().setupBindings();
+
 	nc::SceneNode &rootNode = nc::theApplication().rootNode();
+#ifdef NCPROJECT_DEBUG
 	menu_ = nctl::makeUnique<Menu>(&rootNode, "MENU", this);
+#else
+	splashScreen_ = nctl::makeUnique<SplashScreen>(&rootNode, "SPLASHSCREEN", this);
+#endif
 }
 
 void MyEventHandler::onShutdown()
@@ -167,14 +175,14 @@ void MyEventHandler::onFrameStart()
 
 			const float deltaTime = nc::theApplication().frameTime();
 			ImGui::Text("Delta time: %0.3f ms (%0.1f FPS)", deltaTime * 1000.0f, 1.0f / deltaTime);
+			ImGui::Separator();
 
+			if (splashScreen_ != nullptr)
+				splashScreen_->drawGui();
 			if (menu_ != nullptr)
 				menu_->drawGui();
 			if (game_ != nullptr)
 				game_->drawGui();
-
-			if (ImGui::Button("QUIT"))
-				nc::theApplication().quit();
 		}
 		ImGui::End();
 	}
@@ -195,6 +203,24 @@ void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)
 		showInterface = !showInterface;
 	else if (event.mod & nc::KeyMod::CTRL && event.sym == nc::KeySym::Q)
 		nc::theApplication().quit();
+}
+
+void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)
+{
+	if (menu_ != nullptr)
+		menu_->onKeyPressed(event);
+}
+
+void MyEventHandler::onJoyMappedButtonPressed(const nc::JoyMappedButtonEvent &event)
+{
+	if (menu_ != nullptr)
+		menu_->onJoyMappedButtonPressed(event);
+}
+
+void MyEventHandler::onJoyMappedAxisMoved(const nc::JoyMappedAxisEvent &event)
+{
+	if (menu_ != nullptr)
+		menu_->onJoyMappedAxisMoved(event);
 }
 
 void MyEventHandler::requestMenu()
@@ -221,6 +247,7 @@ void MyEventHandler::showGame()
 
 void MyEventHandler::showMenu()
 {
+	splashScreen_.reset(nullptr);
 	game_.reset(nullptr);
 
 	nc::SceneNode &rootNode = nc::theApplication().rootNode();

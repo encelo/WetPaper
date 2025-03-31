@@ -117,14 +117,16 @@ void Game::onTick(float deltaTime)
 void Game::drawGui()
 {
 #if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
-	if (ImGui::Button("RETURN TO MENU"))
+	if (ImGui::Button("Return To Menu"))
 		eventHandler_->requestMenu();
+	if (ImGui::Button("Quit"))
+		nc::theApplication().quit();
 
 	const float secondsLeft = static_cast<float>(Cfg::Game::MatchTime) - matchTimer_.secondsSince();
 	ImGui::Text("Time left: %d", static_cast<int>(secondsLeft));
 	ImGui::SameLine();
 	if (ImGui::Button("Reset##Time"))
-		matchTimer_ = nc::TimeStamp::now();
+		matchTimer_.toNow();
 
 	playerA_->drawGui();
 	playerB_->drawGui();
@@ -202,22 +204,25 @@ void Game::loadScene()
 	blueBarFill_->setPosition(screenTopRight * Cfg::Gui::BlueBarRelativePos);
 	blueBarFill_->setScale(Cfg::Gui::BarScale);
 
-	const nctl::String fontFntPath_ = nc::fs::joinPath(nc::fs::dataPath(), Cfg::Fonts::CalibriBold50Fnt);
-	const nctl::String fontTexPath_ = nc::fs::joinPath(nc::fs::dataPath(), Cfg::Fonts::CalibriBold50Png);
-	font_ = nctl::makeUnique<nc::Font>(fontFntPath_.data(), resourceManager().retrieveTexture(Cfg::Fonts::CalibriBold50Png));
+	const nctl::String fontFntPath_ = nc::fs::joinPath(nc::fs::dataPath(), Cfg::Fonts::Modak50Fnt);
+	const nctl::String fontTexPath_ = nc::fs::joinPath(nc::fs::dataPath(), Cfg::Fonts::Modak50Png);
+	font_ = nctl::makeUnique<nc::Font>(fontFntPath_.data(), resourceManager().retrieveTexture(Cfg::Fonts::Modak50Png));
 
 	timeText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
 	timeText_->setLayer(Cfg::Layers::Gui_Text);
+	timeText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
 	auxString.format("%d", Cfg::Game::MatchTime);
 	timeText_->setString(auxString);
 	timeText_->setPosition((screenTopRight - timeText_->absSize() * 0.5f) * Cfg::Gui::TimeTextRelativePos);
 
 	pointsAText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
 	pointsAText_->setLayer(Cfg::Layers::Gui_Text);
+	pointsAText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
 	pointsAText_->setString("0");
 	pointsAText_->setPosition((screenTopRight - pointsAText_->absSize() * 0.5f) * Cfg::Gui::PointsATextRelativePos);
 	pointsBText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
 	pointsBText_->setLayer(Cfg::Layers::Gui_Text);
+	pointsBText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
 	pointsBText_->setString("0");
 	pointsBText_->setPosition((screenTopRight - pointsBText_->absSize() * 0.5f) * Cfg::Gui::PointsBTextRelativePos);
 
@@ -237,7 +242,7 @@ void Game::loadScene()
 	obstacle1_->colliderHalfSize_ = nc::Vector2f(4096.0f, Cfg::Game::FloorHeight);
 	obstacle1Gfx_ = nctl::makeUnique<nc::Sprite>(obstacle1_.get(), nullptr);
 	obstacle1Gfx_->setSize(obstacle1_->colliderHalfSize_ * 2.0f);
-	obstacle1Gfx_->setColor(nc::Colorf(1.0f, 1.0f, 1.0f, 0.3f));
+	obstacle1Gfx_->setAlphaF(0.3f);
 
 	// Left limit
 	obstacle2_ = nctl::makeUnique<Body>(this, "Obstacle", ColliderKind::AABB, BodyKind::STATIC, BodyId::STATIC);
@@ -246,7 +251,7 @@ void Game::loadScene()
 #if NCPROJECT_DEBUG
 	obstacle2Gfx_ = nctl::makeUnique<nc::Sprite>(obstacle2_.get(), nullptr);
 	obstacle2Gfx_->setSize(obstacle2_->colliderHalfSize_ * 2.0f);
-	obstacle2Gfx_->setColor(nc::Colorf(1.0f, 1.0f, 1.0f, 0.2f));
+	obstacle2Gfx_->setAlphaF(0.2f);
 #endif
 
 	// Right limit
@@ -256,7 +261,7 @@ void Game::loadScene()
 #if NCPROJECT_DEBUG
 	obstacle3Gfx_ = nctl::makeUnique<nc::Sprite>(obstacle3_.get(), nullptr);
 	obstacle3Gfx_->setSize(obstacle3_->colliderHalfSize_ * 2.0f);
-	obstacle3Gfx_->setColor(nc::Colorf(1.0f, 1.0f, 1.0f, 0.2f));
+	obstacle3Gfx_->setAlphaF(0.2f);
 #endif
 }
 

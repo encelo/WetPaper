@@ -26,4 +26,7 @@ You can find the original version here: https://globalgamejam.org/games/2025/pap
 - Use the new `NCPROJECT_DEBUG` compiler definition
 - Change the quit keyboard shortcut to CTRL + Q
 
-
+- Use a `ncine::TextNode` object to write the game name on the title screen
+- Add a splash screen showing the nCine logo fading in and out
+- Add a menu system based on pages and events
+- Add an input binder and actions system to rebind controls

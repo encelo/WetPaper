@@ -9,10 +9,11 @@
 #include "Bubble.h"
 #include "../ResourceManager.h"
 #include "../Config.h"
+#include "../InputBinder.h"
+#include "../InputActions.h"
 
 #include <ncine/Texture.h>
 #include <ncine/Application.h>
-#include <ncine/IInputManager.h>
 #include <ncine/AnimatedSprite.h>
 #include <ncine/RectAnimation.h>
 
@@ -76,44 +77,18 @@ void Player::onTick(float deltaTime)
 {
 	// Compute the new movement direction
 	{
-		const nc::IInputManager &input = nc::theApplication().inputManager();
-		const nc::KeyboardState &ks = input.keyboardState();
-
 		bool leftDown = false;
-		bool rightDown= false;
+		bool rightDown = false;
 		bool jumpPressed = false;
 		bool dashPressed = false;
 
-		if (index_ == 0)
-		{
-			leftDown = ks.isKeyDown(nc::KeySym::A);
-			rightDown = ks.isKeyDown(nc::KeySym::D);
-			jumpPressed = ks.isKeyPressed(nc::KeySym::W);
-			dashPressed = ks.isKeyPressed(nc::KeySym::S);
-		}
-		else
-		{
-			leftDown = ks.isKeyDown(nc::KeySym::J);
-			rightDown = ks.isKeyDown(nc::KeySym::L);
-			jumpPressed = ks.isKeyPressed(nc::KeySym::I);
-			dashPressed = ks.isKeyPressed(nc::KeySym::K);
-		}
+		InputBinder &ib = inputBinder();
+		const InputActions &ia = inputActions();
 
-		if (input.isJoyPresent(index_))
-		{
-			const nc::JoyMappedState &state = input.joyMappedState(index_);
-			if (state.axisValue(nc::AxisName::LX) < -0.5f)
-				leftDown = true;
-
-			if (state.axisValue(nc::AxisName::LX) > 0.5f)
-				rightDown = true;
-
-			if (state.isButtonPressed(nc::ButtonName::A))
-				jumpPressed = true;
-
-			if (state.isButtonPressed(nc::ButtonName::B))
-				dashPressed = true;
-		}
+		leftDown = (ib.isTriggered(index_ ? ia.P2_LEFT : ia.P1_LEFT));
+		rightDown = (ib.isTriggered(index_ ? ia.P2_RIGHT : ia.P1_RIGHT));
+		jumpPressed = (ib.isTriggered(index_ ? ia.P2_JUMP : ia.P1_JUMP));
+		dashPressed = (ib.isTriggered(index_ ? ia.P2_DASH : ia.P1_DASH));
 
 		if (body_->isGrounded())
 		{

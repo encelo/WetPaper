@@ -21,10 +21,20 @@ set(NCPROJECT_SOURCES
 	src/nodes/Player.cpp
 	src/nodes/Bubble.h
 	src/nodes/Bubble.cpp
+	src/nodes/SplashScreen.h
+	src/nodes/SplashScreen.cpp
 	src/nodes/Menu.h
 	src/nodes/Menu.cpp
+	src/nodes/MenuPage.h
+	src/nodes/MenuPage.cpp
 	src/ResourceManager.h
 	src/ResourceManager.cpp
+	src/InputBinder.h
+	src/InputBinder.cpp
+	src/InputActions.h
+	src/InputActions.cpp
+	src/InputNames.h
+	src/InputNames.cpp
 )
 
 option(CUSTOM_ITCHIO_BUILD "Create a build for the Itch.io store" ON)

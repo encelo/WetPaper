@@ -7,6 +7,7 @@
 namespace ncine {
 	class AppConfiguration;
 }
+class SplashScreen;
 class Menu;
 class Game;
 
@@ -23,7 +24,11 @@ class MyEventHandler :
 	void onShutdown() override;
 	void onFrameStart() override;
 	void onChangeScalingFactor(float factor) override;
+
 	void onKeyReleased(const nc::KeyboardEvent &event) override;
+	void onKeyPressed(const nc::KeyboardEvent &event) override;
+	void onJoyMappedButtonPressed(const nc::JoyMappedButtonEvent &event) override;
+	void onJoyMappedAxisMoved(const nc::JoyMappedAxisEvent &event) override;
 
 	void requestMenu();
 	void requestGame();
@@ -35,6 +40,7 @@ class MyEventHandler :
 	void showMenu();
 	void showGame();
 
+	nctl::UniquePtr<SplashScreen> splashScreen_;
 	nctl::UniquePtr<Menu> menu_;
 	nctl::UniquePtr<Game> game_;
 };

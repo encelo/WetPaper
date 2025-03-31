@@ -16,6 +16,7 @@ namespace Configuration
 			Gui_StaminaBar = 256,
 			Gui_StaminaBar_Fill = Gui_StaminaBar + 1,
 			Gui_Text = Gui_StaminaBar + 1,
+			Menu_Page = 512,
 		};
 	}
 
@@ -23,7 +24,7 @@ namespace Configuration
 
 	namespace Textures
 	{
-		char const * const StartScreen = "textures/start_screen.png";
+		char const *const nCineLogo = "textures/nCineLogo_1024.png";
 		char const * const Background = "textures/background.png";
 
 		char const * const RedBar = "textures/red_bar.png";
@@ -88,8 +89,36 @@ namespace Configuration
 
 	namespace Fonts
 	{
-		char const * const CalibriBold50Fnt = "fonts/calibri_r_bold_50px_outline2px_A.fnt";
-		char const * const CalibriBold50Png = "fonts/calibri_r_bold_50px_outline2px_A.png";
+		char const * const Modak200Fnt = "fonts/Modak-200.fnt";
+		char const * const Modak200Png = "fonts/Modak-200.png";
+
+		char const * const Modak50Fnt = "fonts/Modak-50.fnt";
+		char const * const Modak50Png = "fonts/Modak-50.png";
+
+		char const * const Modak20Fnt = "fonts/Modak-20.fnt";
+		char const * const Modak20Png = "fonts/Modak-20.png";
+	}
+
+	namespace Splash
+	{
+		const float FadeTime = 1.5f;
+		const float FastFadeTime = 0.5f;
+		const float SustainTime = 1.0f;
+	}
+
+	namespace Menu
+	{
+		const nc::Vector2f MenuPageRelativePos(0.5f, 0.6f);
+		const float BackgroundBubbleSpeed = 150.0f;
+		const float BackgroundBubbleSpeedVariance = 0.25f;
+		const unsigned int MaxMenuEntryLength = 32;
+	}
+
+	namespace Settings
+	{
+		const float VolumeGainMin = 0.0f;
+		const float VolumeGainMax = 1.0f;
+		const float VolumeGainStep = 0.1f;
 	}
 
 	namespace Game
