@@ -16,12 +16,14 @@ LogicNode::LogicNode(SceneNode *parent, nctl::String name)
 
 void LogicNode::update(float interval)
 {
-	onTick(interval);
+	if (updateEnabled_)
+		onTick(interval);
 	SceneNode::update(interval);
 }
 
 void LogicNode::visit(nc::RenderQueue &renderQueue, unsigned int &visitOrderIndex)
 {
-	onPostTick(renderQueue, visitOrderIndex);
+	if (drawEnabled_)
+		onPostTick(renderQueue, visitOrderIndex);
 	SceneNode::visit(renderQueue, visitOrderIndex);
 }

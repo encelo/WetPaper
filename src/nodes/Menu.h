@@ -45,7 +45,11 @@ class Menu : public LogicNode
 
 	nctl::UniquePtr<MenuPage> menuPage_;
 	static MenuPage::PageConfig mainPage_;
+	static MenuPage::PageConfig quitConfirmationPage_;
 	static MenuPage::PageConfig settingsPage_;
+	static MenuPage::PageConfig statisticsPage_;
+	static MenuPage::PageConfig resetStatisticsConfirmationPage_;
+	static MenuPage::PageConfig controlsPage_;
 	static MenuPage::PageConfig keyboardControlsPageP1_;
 	static MenuPage::PageConfig keyboardControlsPageP2_;
 	static MenuPage::PageConfig joystickControlsPageP1_;
@@ -60,13 +64,19 @@ class Menu : public LogicNode
 
 	static void goToMainPage();
 	static void goToSettingsPage();
+	static void goToControlsPage();
+	static void goToStatisticsPage();
 	static void simpleSelectFunc(MenuPage::EntryEvent &event);
+	static void statisticsTextFunc(MenuPage::EntryEvent &event);
+	static void settingsPlayersFunc(MenuPage::EntryEvent &event);
+	static void settingsMatchTimeFunc(MenuPage::EntryEvent &event);
 	static void settingsVolumeFunc(MenuPage::EntryEvent &event);
 	static void keyboardControlsFunc(MenuPage::EntryEvent &event);
 	static void joystickControlsFunc(MenuPage::EntryEvent &event);
 
 #if defined(NCPROJECT_DEBUG)
 	static bool selectEventReplyFunc(MenuPage::EventType type);
+	static bool textEventReplyFunc(MenuPage::EventType type);
 	static bool selectTextEventReplyFunc(MenuPage::EventType type);
 	static bool leftRightTextEventReplyFunc(MenuPage::EventType type);
 #endif

@@ -57,6 +57,7 @@ void Bubble::onTick(float deltaTime)
 	{
 		LOGI("Bubble touched ground");
 		dead.pushBack(this);
+		Game::incrementDroppedBubble();
 		Game::playSound();
 	}
 }

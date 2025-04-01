@@ -88,4 +88,9 @@ void InputActions::setupBindings()
 	P2_DASH = ib.addAction("P2 Dash");
 	ib.addKeyboardBinding(P2_DASH, nc::KeySym::DOWN);
 	ib.addMappedGamepadButtonBinding(P2_DASH, 1, nc::ButtonName::B);
+
+	GAME_PAUSE = ib.addAction("Game Pause");
+	ib.addKeyboardBinding(GAME_PAUSE, nc::KeySym::ESCAPE);
+	ib.addMappedGamepadButtonBinding(GAME_PAUSE, 0, nc::ButtonName::START);
+	ib.addMappedGamepadButtonBinding(GAME_PAUSE, 1, nc::ButtonName::START);
 }

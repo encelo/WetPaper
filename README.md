@@ -30,3 +30,10 @@ You can find the original version here: https://globalgamejam.org/games/2025/pap
 - Add a splash screen showing the nCine logo fading in and out
 - Add a menu system based on pages and events
 - Add an input binder and actions system to rebind controls
+
+- Add statistics and some additional settings
+- Add a pause menu page while in game
+- Add a menu page to confirm quitting
+- Move controls settings on their own menu page
+- Add the option to play the game with one player
+

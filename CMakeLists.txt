@@ -10,6 +10,8 @@ set(NCPROJECT_SOURCES
 	src/main.h
 	src/main.cpp
 	src/Config.h
+	src/Settings.h
+	src/Statistics.h
 	src/DebugDraw.h
 	src/nodes/Body.h
 	src/nodes/Body.cpp

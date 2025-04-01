@@ -212,6 +212,16 @@ void MenuPage::drawGui()
 				if (ImGui::Button(auxString.data()))
 					actionEntry(EventType::RIGHT, i);
 			}
+			else
+			{
+				// The entry only replies to the TEXT event, show it in the GUI as text anyway
+				ImGui::Text("%s", entryText);
+			}
+		}
+		else
+		{
+			// The entry doesn't have an event function, show it in the GUI as text anyway
+			ImGui::Text("%s", entryText);
 		}
 	}
 

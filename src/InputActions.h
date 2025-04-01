@@ -23,6 +23,8 @@ class InputActions
 	unsigned int P2_JUMP = 0;
 	unsigned int P2_DASH = 0;
 
+	unsigned int GAME_PAUSE = 0;
+
 	void setupBindings();
 };
 

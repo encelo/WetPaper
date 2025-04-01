@@ -8,6 +8,9 @@
 #include "Bubble.h"
 #include "Body.h"
 #include "../ResourceManager.h"
+#include "../InputBinder.h"
+#include "../InputActions.h"
+#include "../Settings.h"
 #include "../main.h"
 
 #include <ncine/Application.h>
@@ -21,15 +24,32 @@
 
 namespace {
 	Game *gamePtr = nullptr;
+	MenuPage *menuPagePtr = nullptr;
 	nctl::String auxString(256);
+
+	enum SimpleSelectEntry
+	{
+		RESUME_GAME,
+		GOTO_MAIN_MENU,
+		GOTO_QUIT_PAGE,
+		GOTO_PAUSE_PAGE,
+		QUIT
+	};
 }
+
+///////////////////////////////////////////////////////////
+// STATIC DEFINITIONS
+///////////////////////////////////////////////////////////
+
+MenuPage::PageConfig Game::pausePage_;
+MenuPage::PageConfig Game::quitConfirmationPage_;
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS AND DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
 Game::Game(SceneNode *parent, nctl::String name, MyEventHandler *eventHandler)
-    : LogicNode(parent, name), eventHandler_(eventHandler)
+    : LogicNode(parent, name), eventHandler_(eventHandler), paused_(false)
 {
 	gamePtr = this;
 	loadScene();
@@ -38,6 +58,7 @@ Game::Game(SceneNode *parent, nctl::String name, MyEventHandler *eventHandler)
 Game::~Game()
 {
 	gamePtr = nullptr;
+	menuPagePtr = nullptr;
 }
 
 ///////////////////////////////////////////////////////////
@@ -46,8 +67,17 @@ Game::~Game()
 
 void Game::onTick(float deltaTime)
 {
-	if (matchTimer_.secondsSince() > static_cast<float>(Cfg::Game::MatchTime))
+	if (inputBinder().isTriggered(inputActions().GAME_PAUSE))
+		togglePause();
+
+	if (paused_)
+		return;
+
+	if (matchTimer_.secondsSince() > static_cast<float>(eventHandler_->settings().matchTime))
+	{
+		saveStatistics();
 		eventHandler_->requestMenu();
+	}
 
 	destroyDeadBubbles();
 	spawnBubbles();
@@ -96,20 +126,24 @@ void Game::onTick(float deltaTime)
 	redPos.x += (redBar_->width() * (1.0f - playerA_->stamina())) * 0.5f;
 	redBarFill_->setPosition(redPos);
 
-	// Stamina bar sprite for player B
-	nc::Recti blueRect = blueBar_->texRect();
-	blueRect.w *= playerB_->stamina();
-	blueBarFill_->setTexRect(blueRect);
-	nc::Vector2f bluePos = blueBar_->absPosition();
-	bluePos.x -= (blueBar_->width() * (1.0f - playerB_->stamina())) * 0.5f;
-	blueBarFill_->setPosition(bluePos);
-
 	auxString.format("%d", playerA_->points());
 	pointsAText_->setString(auxString);
-	auxString.format("%d", playerB_->points());
-	pointsBText_->setString(auxString);
 
-	const float secondsLeft = static_cast<float>(Cfg::Game::MatchTime) - matchTimer_.secondsSince();
+	if (eventHandler_->settings().numPlayers == 2)
+	{
+		// Stamina bar sprite for player B
+		nc::Recti blueRect = blueBar_->texRect();
+		blueRect.w *= playerB_->stamina();
+		blueBarFill_->setTexRect(blueRect);
+		nc::Vector2f bluePos = blueBar_->absPosition();
+		bluePos.x -= (blueBar_->width() * (1.0f - playerB_->stamina())) * 0.5f;
+		blueBarFill_->setPosition(bluePos);
+
+		auxString.format("%d", playerB_->points());
+		pointsBText_->setString(auxString);
+	}
+
+	const float secondsLeft = static_cast<float>(eventHandler_->settings().matchTime) - matchTimer_.secondsSince();
 	auxString.format("%d", static_cast<int>(secondsLeft));
 	timeText_->setString(auxString);
 }
@@ -122,14 +156,57 @@ void Game::drawGui()
 	if (ImGui::Button("Quit"))
 		nc::theApplication().quit();
 
-	const float secondsLeft = static_cast<float>(Cfg::Game::MatchTime) - matchTimer_.secondsSince();
-	ImGui::Text("Time left: %d", static_cast<int>(secondsLeft));
-	ImGui::SameLine();
-	if (ImGui::Button("Reset##Time"))
-		matchTimer_.toNow();
+	if (ImGui::TreeNode("Settings"))
+	{
+		const Settings &settings = eventHandler_->settings();
+		ImGui::Text("Volume: %.1f", settings.volume);
+		ImGui::Text("Number of players: %d", settings.numPlayers);
+		ImGui::Text("Match time: %d", settings.matchTime);
+		ImGui::TreePop();
+	}
+
+	if (ImGui::TreeNode("Statistics"))
+	{
+		ImGui::Text("Bubbles dropped: %d", statistics_.numDroppedBubles);
+
+		ImGui::NewLine();
+		const PlayerStatistics &statisticsA = playerA_->statistics();
+		ImGui::Text("Jumps P1: %d", statisticsA.numJumps);
+		ImGui::Text("Double jumps P1: %d", statisticsA.numDoubleJumps);
+		ImGui::Text("Dashes P1: %d", statisticsA.numDashes);
+		ImGui::Text("Bubbles catched P1: %d", statisticsA.numCatchedBubbles);
+
+		if (playerB_ != nullptr)
+		{
+			ImGui::NewLine();
+			const PlayerStatistics &statisticsB = playerB_->statistics();
+			ImGui::Text("Jumps P2: %d", statisticsB.numJumps);
+			ImGui::Text("Double jumps P2: %d", statisticsB.numDoubleJumps);
+			ImGui::Text("Dashes P2: %d", statisticsB.numDashes);
+			ImGui::Text("Bubbles catched P2: %d", statisticsB.numCatchedBubbles);
+		}
+
+		ImGui::TreePop();
+	}
+
+	if (paused_)
+	{
+		ImGui::NewLine();
+		menuPage_->drawGui();
+		ImGui::NewLine();
+	}
+	else
+	{
+		const float secondsLeft = static_cast<float>(eventHandler_->settings().matchTime) - matchTimer_.secondsSince();
+		ImGui::Text("Time left: %d", static_cast<int>(secondsLeft));
+		ImGui::SameLine();
+		if (ImGui::Button("Reset##Time"))
+			matchTimer_.toNow();
+	}
 
 	playerA_->drawGui();
-	playerB_->drawGui();
+	if (playerB_ != nullptr)
+		playerB_->drawGui();
 
 	if (ImGui::TreeNode("Collisions", "Collisions: %d", Body::Collisions.size()))
 	{
@@ -159,6 +236,12 @@ void Game::playSound()
 	gamePtr->playPoppingSound();
 }
 
+void Game::incrementDroppedBubble()
+{
+	FATAL_ASSERT(gamePtr != nullptr);
+	gamePtr->statistics_.numDroppedBubles++;
+}
+
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
@@ -185,10 +268,19 @@ void Game::loadScene()
 	background_->setSize(screenTopRight);
 #endif
 
+	darkForeground_ = nctl::makeUnique<nc::Sprite>(this, nullptr);
+	darkForeground_->setSize(screenTopRight);
+	darkForeground_->setPosition(screenTopRight * 0.5f);
+	darkForeground_->setColor(0, 0, 0, 128);
+	darkForeground_->setLayer(Cfg::Layers::Menu_Page - 128);
+	darkForeground_->setEnabled(false);
+
+	const nctl::String fontFntPath_ = nc::fs::joinPath(nc::fs::dataPath(), Cfg::Fonts::Modak50Fnt);
+	const nctl::String fontTexPath_ = nc::fs::joinPath(nc::fs::dataPath(), Cfg::Fonts::Modak50Png);
+	font_ = nctl::makeUnique<nc::Font>(fontFntPath_.data(), resourceManager().retrieveTexture(Cfg::Fonts::Modak50Png));
+
 	redBar_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::RedBar));
 	redBarFill_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::RedBarFill));
-	blueBar_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::BlueBar));
-	blueBarFill_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::BlueBarFill));
 
 	redBar_->setLayer(Cfg::Layers::Gui_StaminaBar);
 	redBar_->setPosition(screenTopRight * Cfg::Gui::RedBarRelativePos);
@@ -197,34 +289,41 @@ void Game::loadScene()
 	redBarFill_->setPosition(screenTopRight * Cfg::Gui::RedBarRelativePos);
 	redBarFill_->setScale(Cfg::Gui::BarScale);
 
-	blueBar_->setLayer(Cfg::Layers::Gui_StaminaBar);
-	blueBar_->setPosition(screenTopRight * Cfg::Gui::BlueBarRelativePos);
-	blueBar_->setScale(Cfg::Gui::BarScale);
-	blueBarFill_->setLayer(Cfg::Layers::Gui_StaminaBar_Fill);
-	blueBarFill_->setPosition(screenTopRight * Cfg::Gui::BlueBarRelativePos);
-	blueBarFill_->setScale(Cfg::Gui::BarScale);
-
-	const nctl::String fontFntPath_ = nc::fs::joinPath(nc::fs::dataPath(), Cfg::Fonts::Modak50Fnt);
-	const nctl::String fontTexPath_ = nc::fs::joinPath(nc::fs::dataPath(), Cfg::Fonts::Modak50Png);
-	font_ = nctl::makeUnique<nc::Font>(fontFntPath_.data(), resourceManager().retrieveTexture(Cfg::Fonts::Modak50Png));
-
-	timeText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
-	timeText_->setLayer(Cfg::Layers::Gui_Text);
-	timeText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
-	auxString.format("%d", Cfg::Game::MatchTime);
-	timeText_->setString(auxString);
-	timeText_->setPosition((screenTopRight - timeText_->absSize() * 0.5f) * Cfg::Gui::TimeTextRelativePos);
-
 	pointsAText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
 	pointsAText_->setLayer(Cfg::Layers::Gui_Text);
 	pointsAText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
 	pointsAText_->setString("0");
 	pointsAText_->setPosition((screenTopRight - pointsAText_->absSize() * 0.5f) * Cfg::Gui::PointsATextRelativePos);
-	pointsBText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
-	pointsBText_->setLayer(Cfg::Layers::Gui_Text);
-	pointsBText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
-	pointsBText_->setString("0");
-	pointsBText_->setPosition((screenTopRight - pointsBText_->absSize() * 0.5f) * Cfg::Gui::PointsBTextRelativePos);
+
+	playerA_ = nctl::makeUnique<Player>(this, "Player A", 0);
+
+	if (eventHandler_->settings().numPlayers == 2)
+	{
+		blueBar_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::BlueBar));
+		blueBarFill_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::BlueBarFill));
+
+		blueBar_->setLayer(Cfg::Layers::Gui_StaminaBar);
+		blueBar_->setPosition(screenTopRight * Cfg::Gui::BlueBarRelativePos);
+		blueBar_->setScale(Cfg::Gui::BarScale);
+		blueBarFill_->setLayer(Cfg::Layers::Gui_StaminaBar_Fill);
+		blueBarFill_->setPosition(screenTopRight * Cfg::Gui::BlueBarRelativePos);
+		blueBarFill_->setScale(Cfg::Gui::BarScale);
+
+		pointsBText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
+		pointsBText_->setLayer(Cfg::Layers::Gui_Text);
+		pointsBText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
+		pointsBText_->setString("0");
+		pointsBText_->setPosition((screenTopRight - pointsBText_->absSize() * 0.5f) * Cfg::Gui::PointsBTextRelativePos);
+
+		playerB_ = nctl::makeUnique<Player>(this, "Player B", 1);
+	}
+
+	timeText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
+	timeText_->setLayer(Cfg::Layers::Gui_Text);
+	timeText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
+	auxString.format("%d", eventHandler_->settings().matchTime);
+	timeText_->setString(auxString);
+	timeText_->setPosition((screenTopRight - timeText_->absSize() * 0.5f) * Cfg::Gui::TimeTextRelativePos);
 
 	for (unsigned int i = 0; i < Cfg::Sounds::NumBubblePopPlayers; i++)
 	{
@@ -232,9 +331,6 @@ void Game::loadScene()
 		    nctl::makeUnique<nc::AudioBufferPlayer>(resourceManager().retrieveAudioBuffer(Cfg::Sounds::BubblePops[i % Cfg::Sounds::NumBubblePops]));
 		poppingPlayers_.pushBack(nctl::move(poppingPlayer));
 	}
-
-	playerA_ = nctl::makeUnique<Player>(this, "Player A", 0);
-	playerB_ = nctl::makeUnique<Player>(this, "Player B", 1);
 
 	// Floor
 	obstacle1_ = nctl::makeUnique<Body>(this, "Floor", ColliderKind::AABB, BodyKind::STATIC, BodyId::STATIC);
@@ -263,13 +359,20 @@ void Game::loadScene()
 	obstacle3Gfx_->setSize(obstacle3_->colliderHalfSize_ * 2.0f);
 	obstacle3Gfx_->setAlphaF(0.2f);
 #endif
+
+	menuPage_ = nctl::makeUnique<MenuPage>(this, "MenuPage");
+	menuPagePtr = menuPage_.get();
+	menuPage_->setPosition(screenTopRight * Cfg::Menu::MenuPageRelativePos);
+	menuPage_->setEnabled(false);
+	setupPages();
 }
 
 void Game::spawnBubbles()
 {
 	const unsigned int aliveCount = bubbles_.size();
+	const unsigned int spawnTarget = Cfg::Game::NumBubbleForSpawnPerPlayer * eventHandler_->settings().numPlayers;
 
-	if (aliveCount < Cfg::Game::NumBubbleForSpawn)
+	if (aliveCount < spawnTarget)
 		spawnBubble();
 }
 
@@ -315,3 +418,149 @@ void Game::playPoppingSound()
 
 	player.play();
 }
+
+void Game::togglePause()
+{
+	// The following code allows the `GAME_PAUSE` action key to be shared with the `UI_BACK` one
+	static unsigned int lastToggleFrame = 0;
+	if (lastToggleFrame == nc::theApplication().numFrames())
+		return;
+	lastToggleFrame = nc::theApplication().numFrames();
+
+	paused_ = !paused_;
+	playerA_->setUpdateEnabled(!paused_);
+	if (playerB_ != nullptr)
+		playerB_->setUpdateEnabled(!paused_);
+
+	menuPage_->setup(pausePage_);
+	menuPage_->setEnabled(paused_);
+	darkForeground_->setEnabled(paused_);
+
+	nc::IAudioDevice &audioDevice = nc::theServiceLocator().audioDevice();
+	if (paused_)
+	{
+		pauseTime_ = nc::TimeStamp::now();
+		audioDevice.pauseDevice();
+	}
+	else
+	{
+		audioDevice.resumeDevice();
+		matchTimer_ += (nc::TimeStamp::now() - pauseTime_);
+	}
+}
+
+void Game::saveStatistics()
+{
+	Statistics &statistics = eventHandler_->statisticsMut();
+	statistics.playTime += eventHandler_->settings().matchTime;
+	statistics.numMatches++;
+	statistics.numDroppedBubles += statistics_.numDroppedBubles;
+
+	const PlayerStatistics &statisticsA = playerA_->statistics();
+	statistics.playerStats[0].numCatchedBubbles += statisticsA.numCatchedBubbles;
+	statistics.playerStats[0].numJumps += statisticsA.numJumps;
+	statistics.playerStats[0].numDoubleJumps += statisticsA.numDoubleJumps;
+	statistics.playerStats[0].numDashes += statisticsA.numDashes;
+
+	if (playerB_ != nullptr)
+	{
+		const PlayerStatistics &statisticsB = playerB_->statistics();
+		statistics.playerStats[1].numCatchedBubbles += statisticsB.numCatchedBubbles;
+		statistics.playerStats[1].numJumps += statisticsB.numJumps;
+		statistics.playerStats[1].numDoubleJumps += statisticsB.numDoubleJumps;
+		statistics.playerStats[1].numDashes += statisticsB.numDashes;
+	}
+}
+
+void Game::setupPages()
+{
+	// Pause menu page
+	{
+		MenuPage::PageEntry resumeEntry("Resume", reinterpret_cast<void *>(SimpleSelectEntry::RESUME_GAME), Game::simpleSelectFunc);
+		MenuPage::PageEntry menuEntry("Main Menu", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_MENU), Game::simpleSelectFunc);
+		MenuPage::PageEntry quitEntry("Quit", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_QUIT_PAGE), Game::simpleSelectFunc);
+
+#if defined(NCPROJECT_DEBUG)
+		resumeEntry.eventReplyFunc = Game::selectEventReplyFunc;
+		menuEntry.eventReplyFunc = Game::selectEventReplyFunc;
+		quitEntry.eventReplyFunc = Game::selectEventReplyFunc;
+#endif
+
+		pausePage_ = {}; // clear the static variable
+		pausePage_.entries.pushBack(resumeEntry);
+		pausePage_.entries.pushBack(menuEntry);
+		pausePage_.entries.pushBack(quitEntry);
+		pausePage_.title = "Pause";
+		pausePage_.backFunc = Game::resumeGame;
+	}
+
+	// Quit confirmation page
+	{
+		MenuPage::PageEntry noEntry("No", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_PAUSE_PAGE), Game::simpleSelectFunc);
+		MenuPage::PageEntry yesEntry("Yes", reinterpret_cast<void *>(SimpleSelectEntry::QUIT), Game::simpleSelectFunc);
+
+#if defined(NCPROJECT_DEBUG)
+		noEntry.eventReplyFunc = Game::selectEventReplyFunc;
+		yesEntry.eventReplyFunc = Game::selectEventReplyFunc;
+#endif
+
+		quitConfirmationPage_ = {}; // clear the static variable
+		quitConfirmationPage_.entries.pushBack(noEntry);
+		quitConfirmationPage_.entries.pushBack(yesEntry);
+		quitConfirmationPage_.title = "Are you sure you want to quit?";
+		quitConfirmationPage_.backFunc = Game::goToPausePage;
+	}
+}
+
+void Game::goToPausePage()
+{
+	FATAL_ASSERT(menuPagePtr != nullptr);
+	ASSERT(gamePtr->paused_ == true);
+	menuPagePtr->setup(gamePtr->pausePage_);
+}
+
+void Game::resumeGame()
+{
+	FATAL_ASSERT(gamePtr != nullptr);
+	ASSERT(gamePtr->paused_ == true);
+	gamePtr->togglePause();
+}
+
+void Game::simpleSelectFunc(MenuPage::EntryEvent &event)
+{
+	if (event.type != MenuPage::EventType::SELECT)
+		return;
+
+	FATAL_ASSERT(gamePtr != nullptr);
+	FATAL_ASSERT(menuPagePtr != nullptr);
+	const SimpleSelectEntry entry = static_cast<SimpleSelectEntry>(reinterpret_cast<uintptr_t>(event.entryData));
+
+	switch (entry)
+	{
+		case RESUME_GAME:
+			ASSERT(gamePtr->paused_ == true);
+			gamePtr->togglePause();
+			break;
+		case GOTO_MAIN_MENU:
+			gamePtr->eventHandler_->requestMenu();
+			break;
+		case GOTO_QUIT_PAGE:
+			menuPagePtr->setup(gamePtr->quitConfirmationPage_);
+			break;
+		case GOTO_PAUSE_PAGE:
+			menuPagePtr->setup(gamePtr->pausePage_);
+			break;
+		case QUIT:
+			nc::theApplication().quit();
+			break;
+		default:
+			break;
+	}
+}
+
+#if defined(NCPROJECT_DEBUG)
+bool Game::selectEventReplyFunc(MenuPage::EventType type)
+{
+	return (type == MenuPage::EventType::SELECT);
+}
+#endif

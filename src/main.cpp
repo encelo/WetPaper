@@ -233,6 +233,26 @@ void MyEventHandler::requestGame()
 	requestGameTransition_ = true;
 }
 
+const Settings &MyEventHandler::settings() const
+{
+	return settings_;
+}
+
+const Statistics &MyEventHandler::statistics() const
+{
+	return statistics_;
+}
+
+Settings &MyEventHandler::settingsMut()
+{
+	return settings_;
+}
+
+Statistics &MyEventHandler::statisticsMut()
+{
+	return statistics_;
+}
+
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////

@@ -120,6 +120,7 @@ void Player::onTick(float deltaTime)
 			if (jumpPressed)
 			{
 				jumpCount_++;
+				statistics_.numJumps++;
 
 				body_->linearVelocity_.y = 0.0f; // removing the Y component
 				body_->linearVelocity_ += nc::Vector2f(0.0f, 1.0f) * Cfg::Player::JumpVelocity;
@@ -149,6 +150,7 @@ void Player::onTick(float deltaTime)
 			if (jumpPressed && jumpCount_ < Cfg::Player::MaxJumpCount)
 			{
 				jumpCount_++;
+				statistics_.numDoubleJumps++;
 
 				body_->linearVelocity_.y = 0.0f; // removing the Y component
 				body_->linearVelocity_ += nc::Vector2f(0.0f, 1.0f) * Cfg::Player::JumpVelocity;
@@ -159,6 +161,7 @@ void Player::onTick(float deltaTime)
 		{
 			stamina_ -= Cfg::Player::DashStaminaCost;
 			dashEnergy_ = Cfg::Player::DashDuration;
+			statistics_.numDashes++;
 
 			if (leftDown)
 			{
@@ -256,4 +259,5 @@ void Player::onBubbleTouched(Bubble *bubble)
 {
 	bubble->touched();
 	points_++;
+	statistics_.numCatchedBubbles++;
 }

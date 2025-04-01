@@ -3,7 +3,9 @@
 #include <nctl/StaticArray.h>
 #include <ncine/TimeStamp.h>
 #include "LogicNode.h"
+#include "MenuPage.h"
 #include "../Config.h"
+#include "../Statistics.h"
 
 namespace ncine {
 	class Sprite;
@@ -29,11 +31,13 @@ class Game : public LogicNode
 	void drawGui();
 
 	static void playSound();
+	static void incrementDroppedBubble();
 
   private:
 	MyEventHandler *eventHandler_;
 
 	nctl::UniquePtr<nc::Sprite> background_;
+	nctl::UniquePtr<nc::Sprite> darkForeground_;
 	nctl::UniquePtr<Player> playerA_;
 	nctl::UniquePtr<Player> playerB_;
 
@@ -61,10 +65,28 @@ class Game : public LogicNode
 	nctl::UniquePtr<nc::TextNode> pointsBText_;
 
 	nc::TimeStamp matchTimer_;
+	nc::TimeStamp pauseTime_;
+	bool paused_;
+	Statistics statistics_;
+
+	nctl::UniquePtr<MenuPage> menuPage_;
+	static MenuPage::PageConfig pausePage_;
+	static MenuPage::PageConfig quitConfirmationPage_;
 
 	void loadScene();
 	void spawnBubbles();
 	void spawnBubble();
 	void destroyDeadBubbles();
 	void playPoppingSound();
+
+	void togglePause();
+	void saveStatistics();
+
+	void setupPages();
+	static void goToPausePage();
+	static void resumeGame();
+	static void simpleSelectFunc(MenuPage::EntryEvent &event);
+#if defined(NCPROJECT_DEBUG)
+	static bool selectEventReplyFunc(MenuPage::EventType type);
+#endif
 };

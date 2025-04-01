@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LogicNode.h"
+#include "../Statistics.h"
 
 namespace ncine {
 	class AnimatedSprite;
@@ -17,6 +18,7 @@ class Player : public LogicNode
 
 	inline float stamina() const { return stamina_; }
 	inline int points() const { return points_; }
+	inline const PlayerStatistics &statistics() const { return statistics_; }
 
 	void onTick(float deltaTime) override;
 	void drawGui();
@@ -34,6 +36,8 @@ class Player : public LogicNode
 	nc::Vector2f dashDir_;
 
 	int jumpCount_;
+
+	PlayerStatistics statistics_;
 
 	void onBubbleTouched(Bubble *bubble);
 };

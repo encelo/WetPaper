@@ -119,13 +119,16 @@ namespace Configuration
 		const float VolumeGainMin = 0.0f;
 		const float VolumeGainMax = 1.0f;
 		const float VolumeGainStep = 0.1f;
+
+		const unsigned int MatchTimeMin = 30;
+		const unsigned int MatchTimeMax = 120;
+		const unsigned int MatchTimeStep = 30;
 	}
 
 	namespace Game
 	{
 		const nc::Vector2i Resolution(1920, 1080);
-		const unsigned int MatchTime = 60;
-		const unsigned int NumBubbleForSpawn = 10;
+		const unsigned int NumBubbleForSpawnPerPlayer = 5;
 		const float FloorHeight = 32.0f;
 	}
 

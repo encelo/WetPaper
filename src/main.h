@@ -4,6 +4,9 @@
 #include <ncine/IAppEventHandler.h>
 #include <ncine/IInputEventHandler.h>
 
+#include "Settings.h"
+#include "Statistics.h"
+
 namespace ncine {
 	class AppConfiguration;
 }
@@ -33,6 +36,11 @@ class MyEventHandler :
 	void requestMenu();
 	void requestGame();
 
+	const Settings &settings() const;
+	const Statistics &statistics() const;
+	Settings &settingsMut();
+	Statistics &statisticsMut();
+
   private:
 	bool requestMenuTransition_ = false;
 	bool requestGameTransition_ = false;
@@ -43,4 +51,7 @@ class MyEventHandler :
 	nctl::UniquePtr<SplashScreen> splashScreen_;
 	nctl::UniquePtr<Menu> menu_;
 	nctl::UniquePtr<Game> game_;
+
+	Settings settings_;
+	Statistics statistics_;
 };
