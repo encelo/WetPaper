@@ -37,3 +37,6 @@ You can find the original version here: https://globalgamejam.org/games/2025/pap
 - Move controls settings on their own menu page
 - Add the option to play the game with one player
 
+- Add a credits menu page
+- Add an end match menu page when the game time ends
+- Add a quit confirmation menu page when the user tries to quit

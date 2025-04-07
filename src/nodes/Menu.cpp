@@ -40,6 +40,7 @@ namespace {
 		GOTO_KEYBOARD_CONTROLS_P2_PAGE,
 		GOTO_JOYSTICK_CONTROLS_P1_PAGE,
 		GOTO_JOYSTICK_CONTROLS_P2_PAGE,
+		GOTO_CREDITS_PAGE,
 		GOTO_MAIN_PAGE,
 		RESET_STATISTICS,
 		QUIT
@@ -180,6 +181,7 @@ MenuPage::PageConfig Menu::keyboardControlsPageP1_;
 MenuPage::PageConfig Menu::keyboardControlsPageP2_;
 MenuPage::PageConfig Menu::joystickControlsPageP1_;
 MenuPage::PageConfig Menu::joystickControlsPageP2_;
+MenuPage::PageConfig Menu::creditsPage_;
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS AND DESTRUCTOR
@@ -443,42 +445,50 @@ void Menu::onJoyMappedAxisMoved(const nc::JoyMappedAxisEvent &event)
 	menuPagePtr->updateAllEntriesText();
 }
 
+void Menu::onQuitRequest()
+{
+	FATAL_ASSERT(menuPagePtr != nullptr);
+	menuPagePtr->setup(quitConfirmationPage_);
+}
+
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
 
 void Menu::setupPages()
 {
+	const unsigned char selectEventMask = (1 << MenuPage::PageEntry::SelectBitPos);
+	const MenuPage::PageEntry::EventReplyBitsT selectEventReplyBits = MenuPage::PageEntry::EventReplyBitsT(selectEventMask);
+
+	const unsigned char textEventMask = (1 << MenuPage::PageEntry::TextBitPos);
+	const MenuPage::PageEntry::EventReplyBitsT textEventReplyBits = MenuPage::PageEntry::EventReplyBitsT(textEventMask);
+
+	const unsigned char selectTextEventMask = (1 << MenuPage::PageEntry::SelectBitPos) + (1 << MenuPage::PageEntry::TextBitPos);
+	const MenuPage::PageEntry::EventReplyBitsT selectTextEventReplyBits = MenuPage::PageEntry::EventReplyBitsT(selectTextEventMask);
+
+	const unsigned char leftRightTextEventMask = (1 << MenuPage::PageEntry::LeftBitPos) + (1 << MenuPage::PageEntry::RightBitPos) + (1 << MenuPage::PageEntry::TextBitPos);
+	const MenuPage::PageEntry::EventReplyBitsT leftRightTextEventReplyBits = MenuPage::PageEntry::EventReplyBitsT(leftRightTextEventMask);
+
 	// Main menu page
 	{
-		MenuPage::PageEntry startEntry("Start", reinterpret_cast<void *>(SimpleSelectEntry::START_GAME), Menu::simpleSelectFunc);
-		MenuPage::PageEntry settingsEntry("Settings", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_SETTINGS_PAGE), Menu::simpleSelectFunc);
-		MenuPage::PageEntry statisticsEntry("Statistics", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_STATISTICS_PAGE), Menu::simpleSelectFunc);
-		MenuPage::PageEntry quitEntry("Quit", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_QUIT_PAGE), Menu::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		startEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-		settingsEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-		statisticsEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-		quitEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry startEntry("Start", reinterpret_cast<void *>(SimpleSelectEntry::START_GAME), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry settingsEntry("Settings", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_SETTINGS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry statisticsEntry("Statistics", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_STATISTICS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry creditsEntry("Credits", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CREDITS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry quitEntry("Quit", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_QUIT_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		mainPage_ = {}; // clear the static variable
 		mainPage_.entries.pushBack(startEntry);
 		mainPage_.entries.pushBack(settingsEntry);
 		mainPage_.entries.pushBack(statisticsEntry);
+		mainPage_.entries.pushBack(creditsEntry);
 		mainPage_.entries.pushBack(quitEntry);
 	}
 
 	// Quit confirmation page
 	{
-		MenuPage::PageEntry noEntry("No", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_PAGE), Menu::simpleSelectFunc);
-		MenuPage::PageEntry yesEntry("Yes", reinterpret_cast<void *>(SimpleSelectEntry::QUIT), Menu::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		noEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-		yesEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry noEntry("No", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry yesEntry("Yes", reinterpret_cast<void *>(SimpleSelectEntry::QUIT), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		quitConfirmationPage_ = {}; // clear the static variable
 		quitConfirmationPage_.entries.pushBack(noEntry);
@@ -489,19 +499,11 @@ void Menu::setupPages()
 
 	// Settings page
 	{
-		MenuPage::PageEntry playersEntry("Players", nullptr, Menu::settingsPlayersFunc);
-		MenuPage::PageEntry matchTimeEntry("Match Time", nullptr, Menu::settingsMatchTimeFunc);
-		MenuPage::PageEntry volumeEntry("Volume", nullptr, Menu::settingsVolumeFunc);
-		MenuPage::PageEntry controlsEntry("Controls", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc);
-		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_PAGE), Menu::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		playersEntry.eventReplyFunc = Menu::leftRightTextEventReplyFunc;
-		matchTimeEntry.eventReplyFunc = Menu::leftRightTextEventReplyFunc;
-		volumeEntry.eventReplyFunc = Menu::leftRightTextEventReplyFunc;
-		controlsEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-		backEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry playersEntry("Players", nullptr, Menu::settingsPlayersFunc, leftRightTextEventReplyBits);
+		MenuPage::PageEntry matchTimeEntry("Match Time", nullptr, Menu::settingsMatchTimeFunc, leftRightTextEventReplyBits);
+		MenuPage::PageEntry volumeEntry("Volume", nullptr, Menu::settingsVolumeFunc, leftRightTextEventReplyBits);
+		MenuPage::PageEntry controlsEntry("Controls", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		settingsPage_ = {}; // clear the static variable
 		settingsPage_.entries.pushBack(playersEntry);
@@ -515,25 +517,14 @@ void Menu::setupPages()
 
 	// Statistics page
 	{
-		MenuPage::PageEntry numMatchesEntry("Matches", reinterpret_cast<void *>(StatisticsTextEntry::NUM_MATCHES), Menu::statisticsTextFunc);
-		MenuPage::PageEntry numBubblesEntry("Bubbles", reinterpret_cast<void *>(StatisticsTextEntry::NUM_BUBBLES), Menu::statisticsTextFunc);
-		MenuPage::PageEntry numCatchedBubblesEntry("Catched Bubbles", reinterpret_cast<void *>(StatisticsTextEntry::NUM_CATCHED_BUBBLES), Menu::statisticsTextFunc);
-		MenuPage::PageEntry numJumpsEntry("Jumps", reinterpret_cast<void *>(StatisticsTextEntry::NUM_JUMPS), Menu::statisticsTextFunc);
-		MenuPage::PageEntry numDoubleJumpsEntry("Double Jumps", reinterpret_cast<void *>(StatisticsTextEntry::NUM_DOUBLE_JUMPS), Menu::statisticsTextFunc);
-		MenuPage::PageEntry numDashesEntry("Dashes", reinterpret_cast<void *>(StatisticsTextEntry::NUM_DASHES), Menu::statisticsTextFunc);
-		MenuPage::PageEntry resetEntry("Reset", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_RESET_STATISTICS_PAGE), Menu::simpleSelectFunc);
-		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_PAGE), Menu::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		numMatchesEntry.eventReplyFunc = Menu::textEventReplyFunc;
-		numBubblesEntry.eventReplyFunc = Menu::textEventReplyFunc;
-		numCatchedBubblesEntry.eventReplyFunc = Menu::textEventReplyFunc;
-		numJumpsEntry.eventReplyFunc = Menu::textEventReplyFunc;
-		numDoubleJumpsEntry.eventReplyFunc = Menu::textEventReplyFunc;
-		numDashesEntry.eventReplyFunc = Menu::textEventReplyFunc;
-		resetEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-		backEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry numMatchesEntry("Matches", reinterpret_cast<void *>(StatisticsTextEntry::NUM_MATCHES), Menu::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry numBubblesEntry("Bubbles", reinterpret_cast<void *>(StatisticsTextEntry::NUM_BUBBLES), Menu::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry numCatchedBubblesEntry("Catched Bubbles", reinterpret_cast<void *>(StatisticsTextEntry::NUM_CATCHED_BUBBLES), Menu::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry numJumpsEntry("Jumps", reinterpret_cast<void *>(StatisticsTextEntry::NUM_JUMPS), Menu::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry numDoubleJumpsEntry("Double Jumps", reinterpret_cast<void *>(StatisticsTextEntry::NUM_DOUBLE_JUMPS), Menu::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry numDashesEntry("Dashes", reinterpret_cast<void *>(StatisticsTextEntry::NUM_DASHES), Menu::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry resetEntry("Reset", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_RESET_STATISTICS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		statisticsPage_ = {}; // clear the static variable
 		statisticsPage_.entries.pushBack(numMatchesEntry);
@@ -550,13 +541,8 @@ void Menu::setupPages()
 
 	// Reset statistics confirmation page
 	{
-		MenuPage::PageEntry noEntry("No", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_STATISTICS_PAGE), Menu::simpleSelectFunc);
-		MenuPage::PageEntry yesEntry("Yes", reinterpret_cast<void *>(SimpleSelectEntry::RESET_STATISTICS), Menu::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		noEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-		yesEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry noEntry("No", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_STATISTICS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry yesEntry("Yes", reinterpret_cast<void *>(SimpleSelectEntry::RESET_STATISTICS), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		resetStatisticsConfirmationPage_ = {}; // clear the static variable
 		resetStatisticsConfirmationPage_.entries.pushBack(noEntry);
@@ -567,19 +553,11 @@ void Menu::setupPages()
 
 	// Controls page
 	{
-		MenuPage::PageEntry keyboardP1Entry("Keyboard P1", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_KEYBOARD_CONTROLS_P1_PAGE), Menu::simpleSelectFunc);
-		MenuPage::PageEntry keyboardP2Entry("Keyboard P2", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_KEYBOARD_CONTROLS_P2_PAGE), Menu::simpleSelectFunc);
-		MenuPage::PageEntry joystickP1Entry("Joystick P1", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_JOYSTICK_CONTROLS_P1_PAGE), Menu::simpleSelectFunc);
-		MenuPage::PageEntry joystickP2Entry("Joystick P2", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_JOYSTICK_CONTROLS_P2_PAGE), Menu::simpleSelectFunc);
-		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_SETTINGS_PAGE), Menu::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		keyboardP1Entry.eventReplyFunc = Menu::selectEventReplyFunc;
-		keyboardP2Entry.eventReplyFunc = Menu::selectEventReplyFunc;
-		joystickP1Entry.eventReplyFunc = Menu::selectEventReplyFunc;
-		joystickP2Entry.eventReplyFunc = Menu::selectEventReplyFunc;
-		backEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry keyboardP1Entry("Keyboard P1", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_KEYBOARD_CONTROLS_P1_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry keyboardP2Entry("Keyboard P2", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_KEYBOARD_CONTROLS_P2_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry joystickP1Entry("Joystick P1", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_JOYSTICK_CONTROLS_P1_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry joystickP2Entry("Joystick P2", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_JOYSTICK_CONTROLS_P2_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_SETTINGS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		controlsPage_ = {}; // clear the static variable
 		controlsPage_.entries.pushBack(keyboardP1Entry);
@@ -594,19 +572,11 @@ void Menu::setupPages()
 	const InputActions &ia = inputActions();
 	// Keyboard controls P1 page
 	{
-		MenuPage::PageEntry keyboardP1JumpEntry("P1 Jump", reinterpret_cast<void *>(ia.P1_JUMP), keyboardControlsFunc);
-		MenuPage::PageEntry keyboardP1DashEntry("P1 Dash", reinterpret_cast<void *>(ia.P1_DASH), keyboardControlsFunc);
-		MenuPage::PageEntry keyboardP1LeftEntry("P1 Left", reinterpret_cast<void *>(ia.P1_LEFT), keyboardControlsFunc);
-		MenuPage::PageEntry keyboardP1RightEntry("P1 Right", reinterpret_cast<void *>(ia.P1_RIGHT), keyboardControlsFunc);
-		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		keyboardP1JumpEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		keyboardP1DashEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		keyboardP1LeftEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		keyboardP1RightEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		backEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry keyboardP1JumpEntry("P1 Jump", reinterpret_cast<void *>(ia.P1_JUMP), keyboardControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry keyboardP1DashEntry("P1 Dash", reinterpret_cast<void *>(ia.P1_DASH), keyboardControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry keyboardP1LeftEntry("P1 Left", reinterpret_cast<void *>(ia.P1_LEFT), keyboardControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry keyboardP1RightEntry("P1 Right", reinterpret_cast<void *>(ia.P1_RIGHT), keyboardControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		keyboardControlsPageP1_ = {}; // clear the static variable
 		keyboardControlsPageP1_.entries.pushBack(keyboardP1JumpEntry);
@@ -620,19 +590,11 @@ void Menu::setupPages()
 
 	// Keyboard controls P2 page
 	{
-		MenuPage::PageEntry keyboardP2JumpEntry("P2 Jump", reinterpret_cast<void *>(ia.P2_JUMP), keyboardControlsFunc);
-		MenuPage::PageEntry keyboardP2DashEntry("P2 Dash", reinterpret_cast<void *>(ia.P2_DASH), keyboardControlsFunc);
-		MenuPage::PageEntry keyboardP2LeftEntry("P2 Left", reinterpret_cast<void *>(ia.P2_LEFT), keyboardControlsFunc);
-		MenuPage::PageEntry keyboardP2RightEntry("P2 Right", reinterpret_cast<void *>(ia.P2_RIGHT), keyboardControlsFunc);
-		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		keyboardP2JumpEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		keyboardP2DashEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		keyboardP2LeftEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		keyboardP2RightEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		backEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry keyboardP2JumpEntry("P2 Jump", reinterpret_cast<void *>(ia.P2_JUMP), keyboardControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry keyboardP2DashEntry("P2 Dash", reinterpret_cast<void *>(ia.P2_DASH), keyboardControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry keyboardP2LeftEntry("P2 Left", reinterpret_cast<void *>(ia.P2_LEFT), keyboardControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry keyboardP2RightEntry("P2 Right", reinterpret_cast<void *>(ia.P2_RIGHT), keyboardControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		keyboardControlsPageP2_ = {}; // clear the static variable
 		keyboardControlsPageP2_.entries.pushBack(keyboardP2JumpEntry);
@@ -646,19 +608,11 @@ void Menu::setupPages()
 
 	// Joystick controls P1 page
 	{
-		MenuPage::PageEntry joyP1JumpEntry("P1 Jump", reinterpret_cast<void *>(ia.P1_JUMP), joystickControlsFunc);
-		MenuPage::PageEntry joyP1DashEntry("P1 Dash", reinterpret_cast<void *>(ia.P1_DASH), joystickControlsFunc);
-		MenuPage::PageEntry joyP1LeftEntry("P1 Left", reinterpret_cast<void *>(ia.P1_LEFT), joystickControlsFunc);
-		MenuPage::PageEntry joyP1RightEntry("P1 Right", reinterpret_cast<void *>(ia.P1_RIGHT), joystickControlsFunc);
-		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		joyP1JumpEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		joyP1DashEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		joyP1LeftEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		joyP1RightEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		backEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry joyP1JumpEntry("P1 Jump", reinterpret_cast<void *>(ia.P1_JUMP), joystickControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry joyP1DashEntry("P1 Dash", reinterpret_cast<void *>(ia.P1_DASH), joystickControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry joyP1LeftEntry("P1 Left", reinterpret_cast<void *>(ia.P1_LEFT), joystickControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry joyP1RightEntry("P1 Right", reinterpret_cast<void *>(ia.P1_RIGHT), joystickControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		joystickControlsPageP1_ = {}; // clear the static variable
 		joystickControlsPageP1_.entries.pushBack(joyP1JumpEntry);
@@ -672,19 +626,11 @@ void Menu::setupPages()
 
 	// Joystick controls P2 page
 	{
-		MenuPage::PageEntry joyP2JumpEntry("P2 Jump", reinterpret_cast<void *>(ia.P2_JUMP), joystickControlsFunc);
-		MenuPage::PageEntry joyP2DashEntry("P2 Dash", reinterpret_cast<void *>(ia.P2_DASH), joystickControlsFunc);
-		MenuPage::PageEntry joyP2LeftEntry("P2 Left", reinterpret_cast<void *>(ia.P2_LEFT), joystickControlsFunc);
-		MenuPage::PageEntry joyP2RightEntry("P2 Right", reinterpret_cast<void *>(ia.P2_RIGHT), joystickControlsFunc);
-		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		joyP2JumpEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		joyP2DashEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		joyP2LeftEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		joyP2RightEntry.eventReplyFunc = Menu::selectTextEventReplyFunc;
-		backEntry.eventReplyFunc = Menu::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry joyP2JumpEntry("P2 Jump", reinterpret_cast<void *>(ia.P2_JUMP), joystickControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry joyP2DashEntry("P2 Dash", reinterpret_cast<void *>(ia.P2_DASH), joystickControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry joyP2LeftEntry("P2 Left", reinterpret_cast<void *>(ia.P2_LEFT), joystickControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry joyP2RightEntry("P2 Right", reinterpret_cast<void *>(ia.P2_RIGHT), joystickControlsFunc, selectTextEventReplyBits);
+		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		joystickControlsPageP2_ = {}; // clear the static variable
 		joystickControlsPageP2_.entries.pushBack(joyP2JumpEntry);
@@ -694,6 +640,26 @@ void Menu::setupPages()
 		joystickControlsPageP2_.entries.pushBack(backEntry);
 		joystickControlsPageP2_.title = "Joystick P2";
 		joystickControlsPageP2_.backFunc = Menu::goToControlsPage;
+	}
+
+	// Credits page
+	{
+		MenuPage::PageEntry teamEntry("Made with nCine by the 3 a.m. Team:");
+		MenuPage::PageEntry programmerAEntry("Encelo (code)");
+		MenuPage::PageEntry programmerBEntry("Cominu (code)");
+		MenuPage::PageEntry artistAEntry("awachirri88 (art)");
+		MenuPage::PageEntry artistBEntry("JustABallOfAnger (art)");
+		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+
+		creditsPage_ = {}; // clear the static variable
+		creditsPage_.entries.pushBack(teamEntry);
+		creditsPage_.entries.pushBack(programmerAEntry);
+		creditsPage_.entries.pushBack(programmerBEntry);
+		creditsPage_.entries.pushBack(artistAEntry);
+		creditsPage_.entries.pushBack(artistBEntry);
+		creditsPage_.entries.pushBack(backEntry);
+		creditsPage_.title = "Credits";
+		creditsPage_.backFunc = Menu::goToMainPage;
 	}
 
 	initInvalidKeys();
@@ -767,6 +733,9 @@ void Menu::simpleSelectFunc(MenuPage::EntryEvent &event)
 			break;
 		case GOTO_JOYSTICK_CONTROLS_P2_PAGE:
 			menuPagePtr->setup(joystickControlsPageP2_);
+			break;
+		case GOTO_CREDITS_PAGE:
+			menuPagePtr->setup(creditsPage_);
 			break;
 		case GOTO_MAIN_PAGE:
 			menuPagePtr->setup(mainPage_);
@@ -1016,28 +985,3 @@ void Menu::joystickControlsFunc(MenuPage::EntryEvent &event)
 		}
 	}
 }
-
-#if defined(NCPROJECT_DEBUG)
-bool Menu::selectEventReplyFunc(MenuPage::EventType type)
-{
-	return (type == MenuPage::EventType::SELECT);
-}
-
-bool Menu::textEventReplyFunc(MenuPage::EventType type)
-{
-	return (type == MenuPage::EventType::TEXT);
-}
-
-bool Menu::selectTextEventReplyFunc(MenuPage::EventType type)
-{
-	return (type == MenuPage::EventType::SELECT ||
-	        type == MenuPage::EventType::TEXT);
-}
-
-bool Menu::leftRightTextEventReplyFunc(MenuPage::EventType type)
-{
-	return (type == MenuPage::EventType::LEFT ||
-	        type == MenuPage::EventType::RIGHT ||
-	        type == MenuPage::EventType::TEXT);
-}
-#endif

@@ -2,6 +2,7 @@
 
 #include "LogicNode.h"
 #include <nctl/StaticArray.h>
+#include <nctl/BitSet.h>
 
 namespace ncine {
 	class Font;
@@ -37,19 +38,22 @@ class MenuPage : public LogicNode
 	struct PageEntry
 	{
 		using EventFunctionT = void(EntryEvent &event);
-		using EventReplyFunctionT = bool(EventType type);
+		using EventReplyBitsT = nctl::BitSet<unsigned char>;
+
+		static const unsigned char SelectBitPos = static_cast<unsigned char>(EventType::SELECT);
+		static const unsigned char LeftBitPos = static_cast<unsigned char>(EventType::LEFT);
+		static const unsigned char RightBitPos = static_cast<unsigned char>(EventType::RIGHT);
+		static const unsigned char TextBitPos = static_cast<unsigned char>(EventType::TEXT);
 
 		nctl::String text;
 		void *data = nullptr;
 		EventFunctionT *eventFunc = nullptr;
-#if defined(NCPROJECT_DEBUG)
-		EventReplyFunctionT *eventReplyFunc = nullptr;
-#endif
+		EventReplyBitsT eventReplyBits;
 
 		PageEntry() = default;
 		explicit PageEntry(const char *t);
 		PageEntry(const char *t, void *d);
-		PageEntry(const char *t, void *d, EventFunctionT *f);
+		PageEntry(const char *t, void *d, EventFunctionT *f, EventReplyBitsT b);
 	};
 
 	struct PageConfig
@@ -85,5 +89,6 @@ class MenuPage : public LogicNode
 	void actionEntry(EventType type, unsigned int entryIndex);
 	void actionBack();
 
+	bool isHoverable(unsigned int entryNum);
 	void setHovered(unsigned int entryNum, bool hovered);
 };

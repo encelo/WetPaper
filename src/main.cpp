@@ -223,6 +223,20 @@ void MyEventHandler::onJoyMappedAxisMoved(const nc::JoyMappedAxisEvent &event)
 		menu_->onJoyMappedAxisMoved(event);
 }
 
+bool MyEventHandler::onQuitRequest()
+{
+#ifndef NCPROJECT_DEBUG
+	if (menu_)
+		menu_->onQuitRequest();
+	else if (game_)
+		game_->onQuitRequest();
+
+	return false;
+#else
+	return true;
+#endif
+}
+
 void MyEventHandler::requestMenu()
 {
 	requestMenuTransition_ = true;

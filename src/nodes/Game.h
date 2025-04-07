@@ -30,6 +30,8 @@ class Game : public LogicNode
 	void onTick(float deltaTime) override;
 	void drawGui();
 
+	void onQuitRequest();
+
 	static void playSound();
 	static void incrementDroppedBubble();
 
@@ -67,11 +69,14 @@ class Game : public LogicNode
 	nc::TimeStamp matchTimer_;
 	nc::TimeStamp pauseTime_;
 	bool paused_;
+	bool matchEnded_;
 	Statistics statistics_;
 
 	nctl::UniquePtr<MenuPage> menuPage_;
 	static MenuPage::PageConfig pausePage_;
-	static MenuPage::PageConfig quitConfirmationPage_;
+	static MenuPage::PageConfig endMatchPage_;
+	static MenuPage::PageConfig quitConfirmationPausePage_;
+	static MenuPage::PageConfig quitConfirmationEndMatchPage_;
 
 	void loadScene();
 	void spawnBubbles();
@@ -80,13 +85,14 @@ class Game : public LogicNode
 	void playPoppingSound();
 
 	void togglePause();
+	void endMatch();
 	void saveStatistics();
 
 	void setupPages();
 	static void goToPausePage();
+	static void goToEndMatchPage();
+	static void goToMainMenu();
 	static void resumeGame();
 	static void simpleSelectFunc(MenuPage::EntryEvent &event);
-#if defined(NCPROJECT_DEBUG)
-	static bool selectEventReplyFunc(MenuPage::EventType type);
-#endif
+	static void statisticsTextFunc(MenuPage::EntryEvent &event);
 };

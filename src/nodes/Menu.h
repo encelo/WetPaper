@@ -31,6 +31,8 @@ class Menu : public LogicNode
 	void onJoyMappedButtonPressed(const nc::JoyMappedButtonEvent &event);
 	void onJoyMappedAxisMoved(const nc::JoyMappedAxisEvent &event);
 
+	void onQuitRequest();
+
   private:
 	MyEventHandler *eventHandler_;
 	nctl::UniquePtr<nc::Sprite> background_;
@@ -54,6 +56,7 @@ class Menu : public LogicNode
 	static MenuPage::PageConfig keyboardControlsPageP2_;
 	static MenuPage::PageConfig joystickControlsPageP1_;
 	static MenuPage::PageConfig joystickControlsPageP2_;
+	static MenuPage::PageConfig creditsPage_;
 
 	static const unsigned int NumBubbles = 20;
 	nctl::StaticArray<nctl::UniquePtr<nc::Sprite>, NumBubbles> bubbles_;
@@ -73,11 +76,4 @@ class Menu : public LogicNode
 	static void settingsVolumeFunc(MenuPage::EntryEvent &event);
 	static void keyboardControlsFunc(MenuPage::EntryEvent &event);
 	static void joystickControlsFunc(MenuPage::EntryEvent &event);
-
-#if defined(NCPROJECT_DEBUG)
-	static bool selectEventReplyFunc(MenuPage::EventType type);
-	static bool textEventReplyFunc(MenuPage::EventType type);
-	static bool selectTextEventReplyFunc(MenuPage::EventType type);
-	static bool leftRightTextEventReplyFunc(MenuPage::EventType type);
-#endif
 };

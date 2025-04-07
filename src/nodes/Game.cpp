@@ -31,9 +31,20 @@ namespace {
 	{
 		RESUME_GAME,
 		GOTO_MAIN_MENU,
-		GOTO_QUIT_PAGE,
+		GOTO_QUIT_PAGE_FROM_PAUSE,
+		GOTO_QUIT_PAGE_FROM_ENDMATCH,
 		GOTO_PAUSE_PAGE,
+		GOTO_END_MATCH_PAGE,
 		QUIT
+	};
+
+	enum StatisticsTextEntry
+	{
+		NUM_BUBBLES,
+		NUM_CATCHED_BUBBLES,
+		NUM_JUMPS,
+		NUM_DOUBLE_JUMPS,
+		NUM_DASHES
 	};
 }
 
@@ -42,14 +53,17 @@ namespace {
 ///////////////////////////////////////////////////////////
 
 MenuPage::PageConfig Game::pausePage_;
-MenuPage::PageConfig Game::quitConfirmationPage_;
+MenuPage::PageConfig Game::endMatchPage_;
+MenuPage::PageConfig Game::quitConfirmationPausePage_;
+MenuPage::PageConfig Game::quitConfirmationEndMatchPage_;
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS AND DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
 Game::Game(SceneNode *parent, nctl::String name, MyEventHandler *eventHandler)
-    : LogicNode(parent, name), eventHandler_(eventHandler), paused_(false)
+    : LogicNode(parent, name), eventHandler_(eventHandler),
+      paused_(false), matchEnded_(false)
 {
 	gamePtr = this;
 	loadScene();
@@ -70,14 +84,12 @@ void Game::onTick(float deltaTime)
 	if (inputBinder().isTriggered(inputActions().GAME_PAUSE))
 		togglePause();
 
-	if (paused_)
-		return;
+	const float matchTimeFloat = static_cast<float>(eventHandler_->settings().matchTime);
+	if (matchEnded_ == false && paused_ == false && matchTimer_.secondsSince() > matchTimeFloat)
+		endMatch();
 
-	if (matchTimer_.secondsSince() > static_cast<float>(eventHandler_->settings().matchTime))
-	{
-		saveStatistics();
-		eventHandler_->requestMenu();
-	}
+	if (paused_ || matchEnded_)
+		return;
 
 	destroyDeadBubbles();
 	spawnBubbles();
@@ -228,6 +240,17 @@ void Game::drawGui()
 		ImGui::TreePop();
 	}
 #endif
+}
+
+void Game::onQuitRequest()
+{
+	if (paused_ == false && matchEnded_ == false)
+		togglePause();
+
+	if (paused_)
+		menuPage_->setup(quitConfirmationPausePage_);
+	else if (matchEnded_)
+		menuPage_->setup(quitConfirmationEndMatchPage_);
 }
 
 void Game::playSound()
@@ -449,6 +472,20 @@ void Game::togglePause()
 	}
 }
 
+void Game::endMatch()
+{
+	saveStatistics();
+
+	matchEnded_ = true;
+	playerA_->setUpdateEnabled(false);
+	if (playerB_ != nullptr)
+		playerB_->setUpdateEnabled(false);
+
+	menuPage_->setup(endMatchPage_);
+	menuPage_->setEnabled(true);
+	darkForeground_->setEnabled(true);
+}
+
 void Game::saveStatistics()
 {
 	Statistics &statistics = eventHandler_->statisticsMut();
@@ -474,17 +511,17 @@ void Game::saveStatistics()
 
 void Game::setupPages()
 {
+	const unsigned char selectEventMask = (1 << MenuPage::PageEntry::SelectBitPos);
+	const MenuPage::PageEntry::EventReplyBitsT selectEventReplyBits = MenuPage::PageEntry::EventReplyBitsT(selectEventMask);
+
+	const unsigned char textEventMask = (1 << MenuPage::PageEntry::TextBitPos);
+	const MenuPage::PageEntry::EventReplyBitsT textEventReplyBits = MenuPage::PageEntry::EventReplyBitsT(textEventMask);
+
 	// Pause menu page
 	{
-		MenuPage::PageEntry resumeEntry("Resume", reinterpret_cast<void *>(SimpleSelectEntry::RESUME_GAME), Game::simpleSelectFunc);
-		MenuPage::PageEntry menuEntry("Main Menu", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_MENU), Game::simpleSelectFunc);
-		MenuPage::PageEntry quitEntry("Quit", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_QUIT_PAGE), Game::simpleSelectFunc);
-
-#if defined(NCPROJECT_DEBUG)
-		resumeEntry.eventReplyFunc = Game::selectEventReplyFunc;
-		menuEntry.eventReplyFunc = Game::selectEventReplyFunc;
-		quitEntry.eventReplyFunc = Game::selectEventReplyFunc;
-#endif
+		MenuPage::PageEntry resumeEntry("Resume", reinterpret_cast<void *>(SimpleSelectEntry::RESUME_GAME), Game::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry menuEntry("Main Menu", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_MENU), Game::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry quitEntry("Quit", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_QUIT_PAGE_FROM_PAUSE), Game::simpleSelectFunc, selectEventReplyBits);
 
 		pausePage_ = {}; // clear the static variable
 		pausePage_.entries.pushBack(resumeEntry);
@@ -494,21 +531,50 @@ void Game::setupPages()
 		pausePage_.backFunc = Game::resumeGame;
 	}
 
-	// Quit confirmation page
+	// End match menu page
 	{
-		MenuPage::PageEntry noEntry("No", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_PAUSE_PAGE), Game::simpleSelectFunc);
-		MenuPage::PageEntry yesEntry("Yes", reinterpret_cast<void *>(SimpleSelectEntry::QUIT), Game::simpleSelectFunc);
+		MenuPage::PageEntry numBubblesEntry("Bubbles", reinterpret_cast<void *>(StatisticsTextEntry::NUM_BUBBLES), Game::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry numCatchedBubblesEntry("Catched Bubbles", reinterpret_cast<void *>(StatisticsTextEntry::NUM_CATCHED_BUBBLES), Game::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry numJumpsEntry("Jumps", reinterpret_cast<void *>(StatisticsTextEntry::NUM_JUMPS), Game::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry numDoubleJumpsEntry("Double Jumps", reinterpret_cast<void *>(StatisticsTextEntry::NUM_DOUBLE_JUMPS), Game::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry numDashesEntry("Dashes", reinterpret_cast<void *>(StatisticsTextEntry::NUM_DASHES), Game::statisticsTextFunc, textEventReplyBits);
+		MenuPage::PageEntry menuEntry("Main Menu", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_MENU), Game::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry quitEntry("Quit", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_QUIT_PAGE_FROM_ENDMATCH), Game::simpleSelectFunc, selectEventReplyBits);
 
-#if defined(NCPROJECT_DEBUG)
-		noEntry.eventReplyFunc = Game::selectEventReplyFunc;
-		yesEntry.eventReplyFunc = Game::selectEventReplyFunc;
-#endif
+		endMatchPage_ = {}; // clear the static variable
+		endMatchPage_.entries.pushBack(numBubblesEntry);
+		endMatchPage_.entries.pushBack(numCatchedBubblesEntry);
+		endMatchPage_.entries.pushBack(numJumpsEntry);
+		endMatchPage_.entries.pushBack(numDoubleJumpsEntry);
+		endMatchPage_.entries.pushBack(numDashesEntry);
+		endMatchPage_.entries.pushBack(menuEntry);
+		endMatchPage_.entries.pushBack(quitEntry);
+		endMatchPage_.title = "End Match";
+		endMatchPage_.backFunc = Game::goToMainMenu;
+	}
 
-		quitConfirmationPage_ = {}; // clear the static variable
-		quitConfirmationPage_.entries.pushBack(noEntry);
-		quitConfirmationPage_.entries.pushBack(yesEntry);
-		quitConfirmationPage_.title = "Are you sure you want to quit?";
-		quitConfirmationPage_.backFunc = Game::goToPausePage;
+	// Quit confirmation page (from pause)
+	{
+		MenuPage::PageEntry noEntry("No", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_PAUSE_PAGE), Game::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry yesEntry("Yes", reinterpret_cast<void *>(SimpleSelectEntry::QUIT), Game::simpleSelectFunc, selectEventReplyBits);
+
+		quitConfirmationPausePage_ = {}; // clear the static variable
+		quitConfirmationPausePage_.entries.pushBack(noEntry);
+		quitConfirmationPausePage_.entries.pushBack(yesEntry);
+		quitConfirmationPausePage_.title = "Are you sure you want to quit?";
+		quitConfirmationPausePage_.backFunc = Game::goToPausePage;
+	}
+
+	// Quit confirmation page (from end match)
+	{
+		MenuPage::PageEntry noEntry("No", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_END_MATCH_PAGE), Game::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry yesEntry("Yes", reinterpret_cast<void *>(SimpleSelectEntry::QUIT), Game::simpleSelectFunc, selectEventReplyBits);
+
+		quitConfirmationEndMatchPage_ = {}; // clear the static variable
+		quitConfirmationEndMatchPage_.entries.pushBack(noEntry);
+		quitConfirmationEndMatchPage_.entries.pushBack(yesEntry);
+		quitConfirmationEndMatchPage_.title = "Are you sure you want to quit?";
+		quitConfirmationEndMatchPage_.backFunc = Game::goToEndMatchPage;
 	}
 }
 
@@ -517,6 +583,18 @@ void Game::goToPausePage()
 	FATAL_ASSERT(menuPagePtr != nullptr);
 	ASSERT(gamePtr->paused_ == true);
 	menuPagePtr->setup(gamePtr->pausePage_);
+}
+
+void Game::goToEndMatchPage()
+{
+	FATAL_ASSERT(menuPagePtr != nullptr);
+	menuPagePtr->setup(gamePtr->endMatchPage_);
+}
+
+void Game::goToMainMenu()
+{
+	FATAL_ASSERT(gamePtr != nullptr);
+	gamePtr->eventHandler_->requestMenu();
 }
 
 void Game::resumeGame()
@@ -542,13 +620,19 @@ void Game::simpleSelectFunc(MenuPage::EntryEvent &event)
 			gamePtr->togglePause();
 			break;
 		case GOTO_MAIN_MENU:
-			gamePtr->eventHandler_->requestMenu();
+			gamePtr->goToMainMenu();
 			break;
-		case GOTO_QUIT_PAGE:
-			menuPagePtr->setup(gamePtr->quitConfirmationPage_);
+		case GOTO_QUIT_PAGE_FROM_PAUSE:
+			menuPagePtr->setup(gamePtr->quitConfirmationPausePage_);
+			break;
+		case GOTO_QUIT_PAGE_FROM_ENDMATCH:
+			menuPagePtr->setup(gamePtr->quitConfirmationEndMatchPage_);
 			break;
 		case GOTO_PAUSE_PAGE:
 			menuPagePtr->setup(gamePtr->pausePage_);
+			break;
+		case GOTO_END_MATCH_PAGE:
+			menuPagePtr->setup(gamePtr->endMatchPage_);
 			break;
 		case QUIT:
 			nc::theApplication().quit();
@@ -558,9 +642,63 @@ void Game::simpleSelectFunc(MenuPage::EntryEvent &event)
 	}
 }
 
-#if defined(NCPROJECT_DEBUG)
-bool Game::selectEventReplyFunc(MenuPage::EventType type)
+void Game::statisticsTextFunc(MenuPage::EntryEvent &event)
 {
-	return (type == MenuPage::EventType::SELECT);
+	if (event.type != MenuPage::EventType::TEXT)
+		return;
+
+	FATAL_ASSERT(gamePtr != nullptr);
+	const StatisticsTextEntry entry = static_cast<StatisticsTextEntry>(reinterpret_cast<uintptr_t>(event.entryData));
+	const Statistics &statistics = gamePtr->statistics_;
+	const PlayerStatistics &statisticsA = gamePtr->playerA_->statistics();
+
+	if (gamePtr->playerB_ != nullptr)
+	{
+		const PlayerStatistics &statisticsB = gamePtr->playerB_->statistics();
+		const unsigned int numCatchedBubbles = statisticsA.numCatchedBubbles + statisticsB.numCatchedBubbles;
+
+		switch (entry)
+		{
+			case NUM_BUBBLES:
+				event.entryText.format("Bubbles: %d catched, %d dropped", numCatchedBubbles, statistics.numDroppedBubles);
+				break;
+			case NUM_CATCHED_BUBBLES:
+				event.entryText.format("Catched Bubbles: P1 %d / P2 %d", statisticsA.numCatchedBubbles, statisticsB.numCatchedBubbles);
+				break;
+			case NUM_JUMPS:
+				event.entryText.format("Jumps: P1 %d / P2 %d", statisticsA.numJumps, statisticsB.numJumps);
+				break;
+			case NUM_DOUBLE_JUMPS:
+				event.entryText.format("Double Jumps: P1 %d / P2 %d", statisticsA.numDoubleJumps, statisticsB.numDoubleJumps);
+				break;
+			case NUM_DASHES:
+				event.entryText.format("Dashes: P1 %d / P2 %d", statisticsA.numDashes, statisticsB.numDashes);
+				break;
+			default:
+				break;
+		}
+	}
+	else
+	{
+		switch (entry)
+		{
+			case NUM_BUBBLES:
+				event.entryText.format("Dropped Bubbles: %d", statistics.numDroppedBubles);
+				break;
+			case NUM_CATCHED_BUBBLES:
+				event.entryText.format("Catched Bubbles: %d", statisticsA.numCatchedBubbles);
+				break;
+			case NUM_JUMPS:
+				event.entryText.format("Jumps: %d", statisticsA.numJumps);
+				break;
+			case NUM_DOUBLE_JUMPS:
+				event.entryText.format("Double Jumps: %d", statisticsA.numDoubleJumps);
+				break;
+			case NUM_DASHES:
+				event.entryText.format("Dashes: %d", statisticsA.numDashes);
+				break;
+			default:
+				break;
+		}
+	}
 }
-#endif

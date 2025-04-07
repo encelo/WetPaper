@@ -33,6 +33,8 @@ class MyEventHandler :
 	void onJoyMappedButtonPressed(const nc::JoyMappedButtonEvent &event) override;
 	void onJoyMappedAxisMoved(const nc::JoyMappedAxisEvent &event) override;
 
+	bool onQuitRequest() override;
+
 	void requestMenu();
 	void requestGame();
 

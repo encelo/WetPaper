@@ -65,8 +65,8 @@ MenuPage::PageEntry::PageEntry(const char *t, void *d)
 {
 }
 
-MenuPage::PageEntry::PageEntry(const char *t, void *d, EventFunctionT *f)
-    : text(t), data(d), eventFunc(f)
+MenuPage::PageEntry::PageEntry(const char *t, void *d, EventFunctionT *f, EventReplyBitsT b)
+    : text(t), data(d), eventFunc(f), eventReplyBits(b)
 {
 }
 
@@ -117,6 +117,9 @@ void MenuPage::setup(const PageConfig &config)
 
 	hoveredEntry_ = 0;
 	setHovered(hoveredEntry_, true);
+	// If the first entry is not hoverable, go to the next valid one
+	if (isHoverable(hoveredEntry_) == false)
+		actionDown();
 }
 
 void MenuPage::updateEntryText(unsigned int entryIndex)
@@ -125,14 +128,10 @@ void MenuPage::updateEntryText(unsigned int entryIndex)
 	ASSERT(entryIndex < numEntries);
 
 	PageEntry &entry = config_.entries[entryIndex];
-	PageEntry::EventFunctionT *eventFunc = entry.eventFunc;
-#if defined(NCPROJECT_DEBUG)
-	ASSERT(entry.eventFunc != nullptr && entry.eventReplyFunc != nullptr);
-	if (entry.eventReplyFunc(EventType::TEXT) == false)
+	if (entry.eventFunc == nullptr || entry.eventReplyBits.test(PageEntry::TextBitPos) == false)
 		LOGW_X("Trying to update the text of entry #%u that doesn't reply to a TEXT event", entryIndex);
-#endif
 
-	if (eventFunc)
+	if (entry.eventFunc)
 	{
 		EntryEvent event(EventType::TEXT, entry.text, entry.data);
 		entry.eventFunc(event);
@@ -188,17 +187,15 @@ void MenuPage::drawGui()
 	{
 		const PageEntry &entry = config_.entries[i];
 		const char *entryText = entry.text.data();
-		ASSERT(entry.eventReplyFunc != nullptr);
 
-		const bool hasEventFunctions = (entry.eventFunc != nullptr && entry.eventReplyFunc != nullptr);
-		if (hasEventFunctions)
+		if (entry.eventFunc != nullptr)
 		{
-			if (entry.eventReplyFunc(EventType::SELECT))
+			if (entry.eventReplyBits.test(PageEntry::SelectBitPos))
 			{
 				if (ImGui::Button(entryText))
 					actionEntry(EventType::SELECT, i);
 			}
-			else if (entry.eventReplyFunc(EventType::LEFT) && entry.eventReplyFunc(EventType::RIGHT))
+			else if (entry.eventReplyBits.test(PageEntry::LeftBitPos) && entry.eventReplyBits.test(PageEntry::RightBitPos))
 			{
 				auxString.format("<##%s", entryText);
 				if (ImGui::Button(auxString.data()))
@@ -214,7 +211,7 @@ void MenuPage::drawGui()
 			}
 			else
 			{
-				// The entry only replies to the TEXT event, show it in the GUI as text anyway
+				// The entry replies to no event or to the TEXT event alone, show it in the GUI as text anyway
 				ImGui::Text("%s", entryText);
 			}
 		}
@@ -244,9 +241,22 @@ void MenuPage::actionUp()
 {
 	if (hoveredEntry_ > 0)
 	{
-		setHovered(hoveredEntry_, false);
-		hoveredEntry_--;
-		setHovered(hoveredEntry_, true);
+		unsigned int aboveEntry = hoveredEntry_;
+		for (int i = hoveredEntry_ - 1; i >= 0; i--)
+		{
+			if (isHoverable(i))
+			{
+				aboveEntry = i;
+				break;
+			}
+		}
+
+		if (aboveEntry < hoveredEntry_)
+		{
+			setHovered(hoveredEntry_, false);
+			setHovered(aboveEntry, true);
+			hoveredEntry_ = aboveEntry;
+		}
 	}
 }
 
@@ -255,9 +265,22 @@ void MenuPage::actionDown()
 	const unsigned int numEntries = config_.entries.size();
 	if (hoveredEntry_ < numEntries - 1)
 	{
-		setHovered(hoveredEntry_, false);
-		hoveredEntry_++;
-		setHovered(hoveredEntry_, true);
+		unsigned int belowEntry = hoveredEntry_;
+		for (unsigned int i = hoveredEntry_ + 1; i < numEntries; i++)
+		{
+			if (isHoverable(i))
+			{
+				belowEntry = i;
+				break;
+			}
+		}
+
+		if (belowEntry > hoveredEntry_)
+		{
+			setHovered(hoveredEntry_, false);
+			setHovered(belowEntry, true);
+			hoveredEntry_ = belowEntry;
+		}
 	}
 }
 
@@ -279,6 +302,28 @@ void MenuPage::actionBack()
 	PageConfig::BackFunctionT *backFunc = config_.backFunc;
 	if (backFunc != nullptr)
 		backFunc();
+}
+
+/* \note An entry with no event function, or that just reply to the `TEXT` one, cannot be hovered */
+bool MenuPage::isHoverable(unsigned int entryNum)
+{
+	bool isHoverable = false;
+
+	const unsigned int numEntries = config_.entries.size();
+	if (entryNum < numEntries)
+	{
+		const unsigned char textEventMask = (1 << MenuPage::PageEntry::TextBitPos);
+		const MenuPage::PageEntry::EventReplyBitsT textEventReplyBits = MenuPage::PageEntry::EventReplyBitsT(textEventMask);
+
+		PageEntry &entry = config_.entries[entryNum];
+		if (entry.eventFunc != nullptr && entry.eventReplyBits.none() == false &&
+		    entry.eventReplyBits != textEventReplyBits)
+		{
+			isHoverable = true;
+		}
+	}
+
+	return isHoverable;
 }
 
 void MenuPage::setHovered(unsigned int entryNum, bool hovered)
