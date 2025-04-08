@@ -10,6 +10,7 @@
 #include "Config.h"
 #include "ResourceManager.h"
 #include "InputActions.h"
+#include "Serializer.h"
 #include "nodes/SplashScreen.h"
 #include "nodes/Menu.h"
 #include "nodes/Game.h"
@@ -27,46 +28,6 @@
 #endif
 
 namespace {
-
-	struct WindowState
-	{
-		nc::Recti rect;
-	};
-
-	bool saveWindowState(const WindowState &ws)
-	{
-		nctl::UniquePtr<nc::IFile> file = nc::IFile::createFileHandle(Cfg::WindowStateFilename);
-		file->open(nc::IFile::OpenMode::WRITE | nc::IFile::OpenMode::BINARY);
-		if (file->isOpened() == false)
-		{
-			LOGW_X("Cannot open window state file: %s", Cfg::WindowStateFilename);
-			return false;
-		}
-
-		file->write(&ws, sizeof(WindowState));
-		file->close();
-		return true;
-	}
-
-	WindowState loadWindowState()
-	{
-		WindowState ws = {};
-		ws.rect = nc::Recti(0, 0, Cfg::Game::Resolution.x, Cfg::Game::Resolution.y); // default value
-
-		nctl::UniquePtr<nc::IFile> file = nc::IFile::createFileHandle(Cfg::WindowStateFilename);
-		file->open(nc::IFile::OpenMode::READ | nc::IFile::OpenMode::BINARY);
-		if (file->isOpened() == false)
-		{
-			LOGW_X("Cannot open window state file: %s", Cfg::WindowStateFilename);
-			return ws;
-		}
-
-		const unsigned long fileSize = file->size();
-		ASSERT(fileSize == sizeof(WindowState));
-		file->read(&ws, sizeof(WindowState));
-		file->close();
-		return ws;
-	}
 
 	bool showInterface = true;
 
@@ -95,12 +56,13 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	#endif
 #endif
 
-	WindowState ws = loadWindowState();
+	Serializer::loadSettings(settings_);
+	Serializer::loadStatistics(statistics_);
 
 	config.windowTitle = "Wet Paper";
 	config.windowIconFilename = "icon48.png";
 
-	config.windowPosition = nc::Vector2i(ws.rect.x, ws.rect.y);
+	config.windowPosition = nc::Vector2i(settings_.windowState.x, settings_.windowState.y);
 #ifndef NCPROJECT_DEBUG
 	config.resizable = false;
 	config.resolution = Cfg::Game::Resolution;
@@ -109,7 +71,7 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	#ifndef __EMSCRIPTEN__
 	config.resizable = true;
 	#endif
-	config.resolution = nc::Vector2i(ws.rect.w, ws.rect.h);
+	config.resolution = nc::Vector2i(settings_.windowState.w, settings_.windowState.h);
 	config.consoleLogLevel = nc::ILogger::LogLevel::INFO;
 #endif
 }
@@ -121,6 +83,9 @@ void MyEventHandler::onInit()
 #endif
 
 	inputActionsMut().setupBindings();
+
+	nc::IAudioDevice &audioDevice = nc::theServiceLocator().audioDevice();
+	audioDevice.setGain(settings_.volume);
 
 	nc::SceneNode &rootNode = nc::theApplication().rootNode();
 #ifdef NCPROJECT_DEBUG
@@ -134,13 +99,12 @@ void MyEventHandler::onShutdown()
 {
 	resourceManager().releaseAll();
 
-	WindowState ws = {};
-	ws.rect.x = nc::theApplication().gfxDevice().windowPositionX();
-	ws.rect.y = nc::theApplication().gfxDevice().windowPositionY();
-	ws.rect.w = nc::theApplication().gfxDevice().resolution().x;
-	ws.rect.h = nc::theApplication().gfxDevice().resolution().y;
-
-	saveWindowState(ws);
+	settings_.windowState.x = nc::theApplication().gfxDevice().windowPositionX();
+	settings_.windowState.y = nc::theApplication().gfxDevice().windowPositionY();
+	settings_.windowState.w = nc::theApplication().gfxDevice().resolution().x;
+	settings_.windowState.h = nc::theApplication().gfxDevice().resolution().y;
+	Serializer::saveSettings(settings_);
+	Serializer::saveStatistics(statistics_);
 }
 
 void MyEventHandler::onFrameStart()

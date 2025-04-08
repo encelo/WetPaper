@@ -37,6 +37,8 @@ set(NCPROJECT_SOURCES
 	src/InputActions.cpp
 	src/InputNames.h
 	src/InputNames.cpp
+	src/Serializer.h
+	src/Serializer.cpp
 )
 
 option(CUSTOM_ITCHIO_BUILD "Create a build for the Itch.io store" ON)
@@ -79,6 +81,20 @@ function(callback_before_target)
 				endif()
 			endif()
 		endif()
+	endif()
+endfunction()
+
+function(callback_after_target)
+	if(NOT EMSCRIPTEN)
+		include(FetchContent)
+		FetchContent_Declare(
+			toml11
+			GIT_REPOSITORY https://github.com/ToruNiina/toml11.git
+			GIT_TAG        v4.4.0
+		)
+		FetchContent_MakeAvailable(toml11)
+
+		target_link_libraries(${NCPROJECT_EXE_NAME} PRIVATE toml11::toml11)
 	endif()
 endfunction()
 

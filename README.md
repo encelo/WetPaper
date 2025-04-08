@@ -40,3 +40,5 @@ You can find the original version here: https://globalgamejam.org/games/2025/pap
 - Add a credits menu page
 - Add an end match menu page when the game time ends
 - Add a quit confirmation menu page when the user tries to quit
+
+- Use the toml11 library to load and save settings in the TOML format

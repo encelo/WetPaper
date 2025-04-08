@@ -20,7 +20,8 @@ namespace Configuration
 		};
 	}
 
-	char const * const WindowStateFilename = ".windowstate";
+	char const * const SettingsFilename = "WetPaper/Settings.toml";
+	char const * const StatisticsFilename = "WetPaper/Statistics.toml";
 
 	namespace Textures
 	{
