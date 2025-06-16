@@ -11,8 +11,6 @@
 #include <ncine/Texture.h>
 #include <ncine/Sprite.h>
 
-nctl::Array<Bubble *> Bubble::dead;
-
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS AND DESTRUCTOR
 ///////////////////////////////////////////////////////////
@@ -56,7 +54,7 @@ void Bubble::onTick(float deltaTime)
 	if (body_->isGrounded())
 	{
 		LOGI("Bubble touched ground");
-		dead.pushBack(this);
+		Game::killBubble(this);
 		Game::incrementDroppedBubble();
 		Game::playSound();
 	}
@@ -65,7 +63,7 @@ void Bubble::onTick(float deltaTime)
 void Bubble::touched()
 {
 	LOGI("Touched");
-	dead.pushBack(this);
+	Game::killBubble(this);
 	Game::playSound();
 }
 
@@ -76,3 +74,21 @@ void Bubble::drawGui(unsigned int index)
 	body_->drawGui();
 #endif
 }
+
+void Bubble::onSpawn()
+{
+	setEnabled(true);
+	Body::All.pushBack(body_.get());
+}
+
+void Bubble::onKilled()
+{
+	setEnabled(false);
+	body_->removeFromAll();
+}
+
+Body *Bubble::body()
+{
+	return body_.get();
+}
+

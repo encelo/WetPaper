@@ -190,6 +190,7 @@ MenuPage::PageConfig Menu::creditsPage_;
 Menu::Menu(SceneNode *parent, nctl::String name, MyEventHandler *eventHandler)
     : LogicNode(parent, name), eventHandler_(eventHandler)
 {
+	static_assert(Menu::NumBubbles <= Cfg::Game::BubblePoolSize, "Cannot have more bubbles than the pool size");
 	menuPtr = this;
 
 #ifndef __EMSCRIPTEN__

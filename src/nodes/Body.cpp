@@ -2,34 +2,9 @@
 #include "../DebugDraw.h"
 #include "../Config.h"
 
-nctl::Array<Body *> Body::All = {};
-nctl::Array<CollisionPair> Body::Collisions = {};
-
-namespace {
-
-	const char *bodyKindToName(BodyKind kind)
-	{
-		switch (kind)
-		{
-			case BodyKind::STATIC: return "STATIC";
-			case BodyKind::DYNAMIC: return "DYNAMIC";
-			default: ASSERT_MSG_X(false, "Unknown BodyKind: %d", kind);
-		}
-	}
-
-	const char *bodyIdToName(BodyId id)
-	{
-		switch (id)
-		{
-			case BodyId::UNDEFINED: return "UNDEFINED";
-			case BodyId::STATIC: return "STATIC";
-			case BodyId::BUBBLE: return "BUBBLE";
-			case BodyId::PLAYER: return "PLAYER";
-			default: ASSERT_MSG_X(false, "Unknown BodyId: %d", id);
-		}
-	}
-
-}
+// All the bubbles plus the two players and the three obstacles
+nctl::Array<Body *> Body::All(Cfg::Game::BubblePoolSize + 5);
+nctl::Array<CollisionPair> Body::Collisions(Cfg::Game::BubblePoolSize + 5);
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS AND DESTRUCTOR
@@ -47,14 +22,7 @@ Body::Body(SceneNode *parent, nctl::String name, ColliderKind collKind, BodyKind
 
 Body::~Body()
 {
-	for (unsigned int i = 0; i < All.size(); i++)
-	{
-		if (All[i] == this)
-		{
-			All.unorderedRemoveAt(i);
-			break;
-		}
-	}
+	removeFromAll();
 }
 
 ///////////////////////////////////////////////////////////
@@ -170,6 +138,18 @@ bool Body::isGrounded()
 	}
 
 	return false;
+}
+
+void Body::removeFromAll()
+{
+	for (unsigned int i = 0; i < Body::All.size(); i++)
+	{
+		if (Body::All[i] == this)
+		{
+			Body::All.unorderedRemoveAt(i);
+			break;
+		}
+	}
 }
 
 void Body::drawGui()

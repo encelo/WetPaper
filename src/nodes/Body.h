@@ -61,6 +61,7 @@ class Body : public LogicNode
 	void integrate(float dT);
 
 	bool isGrounded();
+	void removeFromAll();
 
 	void drawGui();
 

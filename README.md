@@ -42,3 +42,5 @@ You can find the original version here: https://globalgamejam.org/games/2025/pap
 - Add a quit confirmation menu page when the user tries to quit
 
 - Use the toml11 library to load and save settings in the TOML format
+
+- Add a pool to recycle bubble objects instead of recreating them from scratch

@@ -33,6 +33,7 @@ class Game : public LogicNode
 	void onQuitRequest();
 
 	static void playSound();
+	static void killBubble(Bubble *bubblePtr);
 	static void incrementDroppedBubble();
 
   private:
@@ -58,7 +59,9 @@ class Game : public LogicNode
 	nctl::UniquePtr<nc::Sprite> obstacle3Gfx_;
 #endif
 
-	nctl::Array<nctl::UniquePtr<Bubble>> bubbles_;
+	nctl::StaticArray<nctl::UniquePtr<Bubble>, Cfg::Game::BubblePoolSize> bubblePool_;
+	nctl::StaticArray<nctl::UniquePtr<Bubble>, Cfg::Game::BubblePoolSize> bubbles_;
+	nctl::StaticArray<Bubble*, Cfg::Game::BubblePoolSize> deadBubbles_;
 	nctl::StaticArray<nctl::UniquePtr<nc::AudioBufferPlayer>, Cfg::Sounds::NumBubblePopPlayers> poppingPlayers_;
 
 	nctl::UniquePtr<nc::Font> font_;

@@ -129,6 +129,7 @@ namespace Configuration
 	namespace Game
 	{
 		const nc::Vector2i Resolution(1920, 1080);
+		const unsigned int BubblePoolSize = 25;
 		const unsigned int NumBubbleForSpawnPerPlayer = 5;
 		const float FloorHeight = 32.0f;
 	}

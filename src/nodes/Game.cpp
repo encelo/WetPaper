@@ -71,6 +71,10 @@ Game::Game(SceneNode *parent, nctl::String name, MyEventHandler *eventHandler)
 
 Game::~Game()
 {
+	destroyDeadBubbles();
+	Body::All.clear();
+	Body::Collisions.clear();
+
 	gamePtr = nullptr;
 	menuPagePtr = nullptr;
 }
@@ -235,6 +239,12 @@ void Game::drawGui()
 
 	if (ImGui::TreeNode("Bubbles"))
 	{
+		ImGui::Text("Alive: %d, Dead: %d, Pool: %d", bubbles_.size(), deadBubbles_.size(), bubblePool_.size());
+		auxString.format("Pool: %d / %d", bubblePool_.size(), Cfg::Game::BubblePoolSize);
+		const float poolFraction = bubblePool_.size() / static_cast<float>(Cfg::Game::BubblePoolSize);
+		ImGui::ProgressBar(poolFraction, ImVec2(0.0f, 0.0f), auxString.data());
+		ImGui::NewLine();
+
 		for (unsigned int i = 0; i < bubbles_.size(); i++)
 			bubbles_[i]->drawGui(i);
 		ImGui::TreePop();
@@ -257,6 +267,13 @@ void Game::playSound()
 {
 	FATAL_ASSERT(gamePtr != nullptr);
 	gamePtr->playPoppingSound();
+}
+
+void Game::killBubble(Bubble *bubblePtr)
+{
+	FATAL_ASSERT(gamePtr != nullptr);
+	bubblePtr->onKilled();
+	gamePtr->deadBubbles_.pushBack(bubblePtr);
 }
 
 void Game::incrementDroppedBubble()
@@ -341,6 +358,15 @@ void Game::loadScene()
 		playerB_ = nctl::makeUnique<Player>(this, "Player B", 1);
 	}
 
+	for (unsigned int i = 0; i < Cfg::Game::BubblePoolSize; i++)
+	{
+		auxString.format("Bubble #%u", i);
+		const unsigned int variant = nc::random().integer(0, Cfg::Textures::NumBubbleVariants);
+		nctl::UniquePtr<Bubble> bubble = nctl::makeUnique<Bubble>(this, auxString.data(), nc::Vector2f::Zero, variant);
+		bubble->onKilled();
+		bubblePool_.pushBack(nctl::move(bubble));
+	}
+
 	timeText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
 	timeText_->setLayer(Cfg::Layers::Gui_Text);
 	timeText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
@@ -401,32 +427,41 @@ void Game::spawnBubbles()
 
 void Game::spawnBubble()
 {
+	if (bubblePool_.isEmpty())
+	{
+		LOGW("Bubble pool is empty, cannot spawn a new bubble!");
+		return;
+	}
+
 	const float screenWidth = nc::theApplication().gfxDevice().width();
 	const float screenHeight = nc::theApplication().gfxDevice().height();
 
 	const nc::Vector2f pos = nc::Vector2f(lerp(screenWidth * 0.1f, screenWidth - screenWidth * 0.1f, nc::random().real()),
 	                                      screenHeight + lerp(screenHeight * 0.2f, screenHeight * 1.0f, nc::random().real()));
 
-	const unsigned int variant = nc::random().integer(0, Cfg::Textures::NumBubbleVariants);
-	nctl::UniquePtr<Bubble> bubble = nctl::makeUnique<Bubble>(this, "Bubble", pos, variant);
+	nctl::UniquePtr<Bubble> bubble = nctl::move(bubblePool_.back());
+	bubblePool_.popBack();
+	bubble->body()->setPosition(pos);
+	bubble->onSpawn();
 	bubbles_.pushBack(nctl::move(bubble));
 }
 
 void Game::destroyDeadBubbles()
 {
 	// Destroy all dead nodes from last frame
-	for (const Bubble *it : Bubble::dead)
+	for (const Bubble *it : deadBubbles_)
 	{
 		for (int i = bubbles_.size() - 1; i >= 0; i--)
 		{
 			if (bubbles_[i].get() == it)
 			{
+				bubblePool_.pushBack(nctl::move(bubbles_[i]));
 				bubbles_.unorderedRemoveAt(i);
 				break;
 			}
 		}
 	}
-	Bubble::dead.clear();
+	deadBubbles_.clear();
 }
 
 void Game::playPoppingSound()
