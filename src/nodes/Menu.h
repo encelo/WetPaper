@@ -31,10 +31,12 @@ class Menu : public LogicNode
 	void onJoyMappedButtonPressed(const nc::JoyMappedButtonEvent &event);
 	void onJoyMappedAxisMoved(const nc::JoyMappedAxisEvent &event);
 
+	void onFrameStart();
 	void onQuitRequest();
 
   private:
 	MyEventHandler *eventHandler_;
+
 	nctl::UniquePtr<nc::Sprite> background_;
 	nctl::UniquePtr<nc::Sprite> darkForeground_;
 
@@ -44,6 +46,10 @@ class Menu : public LogicNode
 	nctl::UniquePtr<nc::Font> smallFont_;
 	nctl::UniquePtr<nc::TextNode> versionText_;
 	nctl::UniquePtr<nc::TextNode> statusText_;
+
+	nctl::UniquePtr<nc::SceneNode> backgroundRoot_;
+	nctl::UniquePtr<nc::SceneNode> sceneRoot_;
+	nctl::UniquePtr<nc::SceneNode> foregroundRoot_;
 
 	nctl::UniquePtr<MenuPage> menuPage_;
 	static MenuPage::PageConfig mainPage_;
@@ -62,6 +68,12 @@ class Menu : public LogicNode
 	nctl::StaticArray<nctl::UniquePtr<nc::Sprite>, NumBubbles> bubbles_;
 	nctl::StaticArray<nc::Vector2f, NumBubbles> bubbleDirections_;
 	nctl::StaticArray<float, NumBubbles> bubbleSpeeds_;
+	nctl::StaticArray<unsigned int, NumBubbles> bubbleVariants_;
+
+	bool requestGame_ = false;
+	bool requestShaderEffectsChange_ = false;
+	bool shaderEffectsEnabled_ = false;
+	void enableShaderEffects(bool enabled);
 
 	void setupPages();
 
@@ -74,6 +86,7 @@ class Menu : public LogicNode
 	static void settingsPlayersFunc(MenuPage::EntryEvent &event);
 	static void settingsMatchTimeFunc(MenuPage::EntryEvent &event);
 	static void settingsVolumeFunc(MenuPage::EntryEvent &event);
+	static void settingsShadersFunc(MenuPage::EntryEvent &event);
 	static void keyboardControlsFunc(MenuPage::EntryEvent &event);
 	static void joystickControlsFunc(MenuPage::EntryEvent &event);
 };

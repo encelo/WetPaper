@@ -9,7 +9,9 @@
 
 namespace ncine {
 	class AppConfiguration;
+	class Viewport;
 }
+class ShaderEffects;
 class SplashScreen;
 class Menu;
 class Game;
@@ -26,6 +28,7 @@ class MyEventHandler :
 	void onInit() override;
 	void onShutdown() override;
 	void onFrameStart() override;
+	void onDrawViewport(nc::Viewport &viewport) override;
 	void onChangeScalingFactor(float factor) override;
 
 	void onKeyReleased(const nc::KeyboardEvent &event) override;
@@ -35,6 +38,7 @@ class MyEventHandler :
 
 	bool onQuitRequest() override;
 
+	ShaderEffects &shaderEffects();
 	void requestMenu();
 	void requestGame();
 
@@ -50,6 +54,7 @@ class MyEventHandler :
 	void showMenu();
 	void showGame();
 
+	nctl::UniquePtr<ShaderEffects> shaderEffects_;
 	nctl::UniquePtr<SplashScreen> splashScreen_;
 	nctl::UniquePtr<Menu> menu_;
 	nctl::UniquePtr<Game> game_;

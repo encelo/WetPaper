@@ -12,6 +12,7 @@
 #include "../InputActions.h"
 #include "../Settings.h"
 #include "../main.h"
+#include "../ShaderEffects.h"
 
 #include <ncine/Application.h>
 #include <ncine/FileSystem.h>
@@ -167,10 +168,18 @@ void Game::onTick(float deltaTime)
 void Game::drawGui()
 {
 #if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
+	if (ImGui::Button("Toggle shaders"))
+	{
+		Settings &settings = eventHandler_->settingsMut();
+		settings.withShaders = !settings.withShaders;
+		requestShaderEffectsChange_ = true;
+		requestPauseShaderEffectsChange_ = true;
+	}
 	if (ImGui::Button("Return To Menu"))
-		eventHandler_->requestMenu();
+		requestMenu_ = true;
 	if (ImGui::Button("Quit"))
 		nc::theApplication().quit();
+	ImGui::NewLine();
 
 	if (ImGui::TreeNode("Settings"))
 	{
@@ -178,6 +187,7 @@ void Game::drawGui()
 		ImGui::Text("Volume: %.1f", settings.volume);
 		ImGui::Text("Number of players: %d", settings.numPlayers);
 		ImGui::Text("Match time: %d", settings.matchTime);
+		ImGui::Text("Shaders: %s", settings.withShaders ? "on" : "off");
 		ImGui::TreePop();
 	}
 
@@ -250,6 +260,28 @@ void Game::drawGui()
 		ImGui::TreePop();
 	}
 #endif
+}
+
+void Game::onFrameStart()
+{
+	if (requestShaderEffectsChange_)
+	{
+		enableShaderEffects(eventHandler_->settings().withShaders);
+		requestShaderEffectsChange_ = false;
+	}
+
+	if (requestPauseShaderEffectsChange_)
+	{
+		eventHandler_->shaderEffects().setupGameViewportsPause(paused_);
+		requestPauseShaderEffectsChange_ = false;
+	}
+
+	if (requestMenu_)
+	{
+		enableShaderEffects(false);
+		eventHandler_->requestMenu();
+		requestMenu_ = false;
+	}
 }
 
 void Game::onQuitRequest()
@@ -414,6 +446,18 @@ void Game::loadScene()
 	menuPage_->setPosition(screenTopRight * Cfg::Menu::MenuPageRelativePos);
 	menuPage_->setEnabled(false);
 	setupPages();
+
+	// Scene nodes used to setup shader effects
+	backgroundRoot_ = nctl::makeUnique<nc::SceneNode>(this);
+	backgroundRoot_->setDeleteChildrenOnDestruction(false);
+
+	sceneRoot_ = nctl::makeUnique<nc::SceneNode>(this);
+	sceneRoot_->setDeleteChildrenOnDestruction(false);
+
+	foregroundRoot_ = nctl::makeUnique<nc::SceneNode>(this);
+	foregroundRoot_->setDeleteChildrenOnDestruction(false);
+
+	requestShaderEffectsChange_ = true;
 }
 
 void Game::spawnBubbles()
@@ -505,6 +549,9 @@ void Game::togglePause()
 		audioDevice.resumeDevice();
 		matchTimer_ += (nc::TimeStamp::now() - pauseTime_);
 	}
+
+	if (shaderEffectsEnabled_)
+		requestPauseShaderEffectsChange_ = true;
 }
 
 void Game::endMatch()
@@ -542,6 +589,111 @@ void Game::saveStatistics()
 		statistics.playerStats[1].numDoubleJumps += statisticsB.numDoubleJumps;
 		statistics.playerStats[1].numDashes += statisticsB.numDashes;
 	}
+}
+
+void Game::enableShaderEffects(bool enabled)
+{
+	if (eventHandler_->shaderEffects().isInitialized() == false || shaderEffectsEnabled_ == enabled)
+		return;
+
+	if (enabled)
+	{
+		background_->setParent(backgroundRoot_.get());
+		darkForeground_->setParent(sceneRoot_.get());
+		playerA_->setParent(sceneRoot_.get());
+		redBar_->setParent(sceneRoot_.get());
+		redBarFill_->setParent(sceneRoot_.get());
+		pointsAText_->setParent(sceneRoot_.get());
+
+		if (playerB_)
+		{
+			playerB_->setParent(sceneRoot_.get());
+			blueBar_->setParent(sceneRoot_.get());
+			blueBarFill_->setParent(sceneRoot_.get());
+			pointsBText_->setParent(sceneRoot_.get());
+		}
+
+		obstacle1Gfx_->setParent(sceneRoot_.get());
+		obstacle1Gfx_->setAlphaF(0.7f);
+#if NCPROJECT_DEBUG
+		obstacle2_->setParent(sceneRoot_.get());
+		obstacle3_->setParent(sceneRoot_.get());
+		obstacle2Gfx_->setAlphaF(0.5f);
+		obstacle3Gfx_->setAlphaF(0.5f);
+#endif
+		timeText_->setParent(sceneRoot_.get());
+
+		menuPage_->setParent(foregroundRoot_.get());
+
+		background_->setFlippedY(true);
+		darkForeground_->setAlpha(128 + 52);
+
+		nctl::StaticArray<Bubble *, Cfg::Game::BubblePoolSize> allBubbles;
+		for (unsigned int i = 0; i < bubblePool_.size(); i++)
+			allBubbles.pushBack(bubblePool_[i].get());
+		for (unsigned int i = 0; i < bubbles_.size(); i++)
+			allBubbles.pushBack(bubbles_[i].get());
+
+		for (unsigned int i = 0; i < allBubbles.size(); i++)
+		{
+			allBubbles[i]->setParent(sceneRoot_.get());
+			nc::Sprite *bubbleSprite = allBubbles[i]->sprite();
+			eventHandler_->shaderEffects().setBubbleShader(bubbleSprite, i);
+		}
+
+		eventHandler_->shaderEffects().setupGameViewports(this, backgroundRoot_.get(), sceneRoot_.get(), foregroundRoot_.get());
+	}
+	else
+	{
+		background_->setParent(this);
+		darkForeground_->setParent(this);
+		playerA_->setParent(this);
+		redBar_->setParent(this);
+		redBarFill_->setParent(this);
+		pointsAText_->setParent(this);
+
+		if (playerB_)
+		{
+			playerB_->setParent(this);
+			blueBar_->setParent(this);
+			blueBarFill_->setParent(this);
+			pointsBText_->setParent(this);
+		}
+
+		obstacle1Gfx_->setParent(this);
+		obstacle1Gfx_->setAlphaF(0.3f);
+#if NCPROJECT_DEBUG
+		obstacle2_->setParent(this);
+		obstacle3_->setParent(this);
+		obstacle2Gfx_->setAlphaF(0.2f);
+		obstacle3Gfx_->setAlphaF(0.2f);
+#endif
+		timeText_->setParent(this);
+
+		menuPage_->setParent(this);
+
+		background_->setFlippedY(false);
+		darkForeground_->setAlpha(128);
+
+		nctl::StaticArray<Bubble *, Cfg::Game::BubblePoolSize> allBubbles;
+		for (unsigned int i = 0; i < bubblePool_.size(); i++)
+			allBubbles.pushBack(bubblePool_[i].get());
+		for (unsigned int i = 0; i < bubbles_.size(); i++)
+			allBubbles.pushBack(bubbles_[i].get());
+
+		for (unsigned int i = 0; i < allBubbles.size(); i++)
+		{
+			nc::Sprite *bubbleSprite = allBubbles[i]->sprite();
+			nc::Texture *bubbleTex = resourceManager().retrieveTexture(Cfg::Textures::Bubbles[allBubbles[i]->variant()]);
+			bubbleSprite->setTexture(bubbleTex);
+			allBubbles[i]->setParent(this);
+			eventHandler_->shaderEffects().clearBubbleShader(i);
+		}
+
+		eventHandler_->shaderEffects().resetViewports();
+	}
+
+	shaderEffectsEnabled_ = enabled;
 }
 
 void Game::setupPages()
@@ -629,7 +781,7 @@ void Game::goToEndMatchPage()
 void Game::goToMainMenu()
 {
 	FATAL_ASSERT(gamePtr != nullptr);
-	gamePtr->eventHandler_->requestMenu();
+	gamePtr->requestMenu_ = true;
 }
 
 void Game::resumeGame()

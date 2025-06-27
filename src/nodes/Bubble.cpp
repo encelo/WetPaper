@@ -16,7 +16,7 @@
 ///////////////////////////////////////////////////////////
 
 Bubble::Bubble(nc::SceneNode *parent, nctl::String name, nc::Vector2f pos, unsigned int variant)
-    : LogicNode(parent, name)
+    : LogicNode(parent, name), variant_(variant)
 {
 	// Setup the physics body
 	{
@@ -30,10 +30,10 @@ Bubble::Bubble(nc::SceneNode *parent, nctl::String name, nc::Vector2f pos, unsig
 
 	// Setup the sprite
 	{
-		if (variant >= Cfg::Textures::NumBubbleVariants)
-			variant = 0;
+		if (variant_ >= Cfg::Textures::NumBubbleVariants)
+			variant_ = 0;
 
-		nc::Texture *tex = resourceManager().retrieveTexture(Cfg::Textures::Bubbles[variant]);
+		nc::Texture *tex = resourceManager().retrieveTexture(Cfg::Textures::Bubbles[variant_]);
 		FATAL_ASSERT_MSG(tex != nullptr, "Cannot load texture!");
 
 		sprite_ = nctl::makeUnique<nc::Sprite>(body_.get(), tex);
@@ -87,8 +87,17 @@ void Bubble::onKilled()
 	body_->removeFromAll();
 }
 
+unsigned int Bubble::variant() const
+{
+	return variant_;
+}
+
 Body *Bubble::body()
 {
 	return body_.get();
 }
 
+nc::Sprite *Bubble::sprite()
+{
+	return sprite_.get();
+}

@@ -44,3 +44,6 @@ You can find the original version here: https://globalgamejam.org/games/2025/pap
 - Use the toml11 library to load and save settings in the TOML format
 
 - Add a pool to recycle bubble objects instead of recreating them from scratch
+
+- Add a custom refraction shader for bubbles and a separable blur filter for the pause screen
+- Add an entry in the settings menu page to enable or disable shaders

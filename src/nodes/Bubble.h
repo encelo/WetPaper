@@ -21,9 +21,12 @@ class Bubble : public LogicNode
 	void onSpawn();
 	void onKilled();
 
+	unsigned int variant() const;
 	Body *body();
+	nc::Sprite *sprite();
 
   private:
+	unsigned int variant_;
 	nctl::UniquePtr<Body> body_;
 	nctl::UniquePtr<nc::Sprite> sprite_;
 };

@@ -11,6 +11,7 @@
 #include "ResourceManager.h"
 #include "InputActions.h"
 #include "Serializer.h"
+#include "ShaderEffects.h"
 #include "nodes/SplashScreen.h"
 #include "nodes/Menu.h"
 #include "nodes/Game.h"
@@ -69,7 +70,7 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	config.consoleLogLevel = nc::ILogger::LogLevel::OFF;
 #else
 	#ifndef __EMSCRIPTEN__
-	config.resizable = true;
+	config.resizable = true; // not working when shaders are enabled
 	#endif
 	config.resolution = nc::Vector2i(settings_.windowState.w, settings_.windowState.h);
 	config.consoleLogLevel = nc::ILogger::LogLevel::INFO;
@@ -87,6 +88,7 @@ void MyEventHandler::onInit()
 	nc::IAudioDevice &audioDevice = nc::theServiceLocator().audioDevice();
 	audioDevice.setGain(settings_.volume);
 
+	shaderEffects_ = nctl::makeUnique<ShaderEffects>();
 	nc::SceneNode &rootNode = nc::theApplication().rootNode();
 #ifdef NCPROJECT_DEBUG
 	menu_ = nctl::makeUnique<Menu>(&rootNode, "MENU", this);
@@ -109,6 +111,11 @@ void MyEventHandler::onShutdown()
 
 void MyEventHandler::onFrameStart()
 {
+	if (menu_ != nullptr)
+		menu_->onFrameStart();
+	else if (game_ != nullptr)
+		game_->onFrameStart();
+
 	if (requestMenuTransition_)
 	{
 		showMenu();
@@ -151,6 +158,11 @@ void MyEventHandler::onFrameStart()
 		ImGui::End();
 	}
 #endif
+}
+
+void MyEventHandler::onDrawViewport(nc::Viewport &viewport)
+{
+	shaderEffects_->onDrawViewport(viewport);
 }
 
 void MyEventHandler::onChangeScalingFactor(float factor)
@@ -199,6 +211,11 @@ bool MyEventHandler::onQuitRequest()
 #else
 	return true;
 #endif
+}
+
+ShaderEffects &MyEventHandler::shaderEffects()
+{
+	return *shaderEffects_;
 }
 
 void MyEventHandler::requestMenu()

@@ -14,6 +14,7 @@
 #include "../InputNames.h"
 #include "../Settings.h"
 #include "../Statistics.h"
+#include "../ShaderEffects.h"
 
 #include <nctl/HashSet.h>
 #include <ncine/InputEvents.h>
@@ -64,6 +65,7 @@ namespace {
 		JUST_REBINDED,
 	};
 
+	bool deferShaderEffectsChange = false;
 	unsigned int waitFrame = 0;
 	RebindingState rebindingState = RebindingState::NOT_REBINDING;
 	unsigned int rebindActionId = InputBinder::InvalidId;
@@ -260,12 +262,30 @@ Menu::Menu(SceneNode *parent, nctl::String name, MyEventHandler *eventHandler)
 		bubbleSpeeds_.pushBack(nc::random().real(1.0f - speedVar, 1.0f + speedVar) * Cfg::Menu::BackgroundBubbleSpeed);
 
 		const unsigned int variant = nc::random().integer(0, Cfg::Textures::NumBubbleVariants);
+		bubbleVariants_.pushBack(variant);
 		nc::Texture *tex = resourceManager().retrieveTexture(Cfg::Textures::Bubbles[variant]);
 		nctl::UniquePtr<nc::Sprite> bubble = nctl::makeUnique<nc::Sprite>(this, tex, pos);
 		bubble->setLayer(Cfg::Layers::Background + 1);
 
 		bubbles_.pushBack(nctl::move(bubble));
 	}
+
+	// Scene nodes used to setup shader effects
+	backgroundRoot_ = nctl::makeUnique<nc::SceneNode>(this);
+	backgroundRoot_->setDeleteChildrenOnDestruction(false);
+
+	sceneRoot_ = nctl::makeUnique<nc::SceneNode>(this);
+	sceneRoot_->setDeleteChildrenOnDestruction(false);
+
+	foregroundRoot_ = nctl::makeUnique<nc::SceneNode>(this);
+	foregroundRoot_->setDeleteChildrenOnDestruction(false);
+
+	// Defer the very first shader effects change to the second frame.
+	// This fixes the scaling support when shaders are enabled on startup.
+	if (windowScaling != 1.0f)
+		deferShaderEffectsChange = true;
+	else
+		requestShaderEffectsChange_ = true;
 }
 
 Menu::~Menu()
@@ -330,6 +350,13 @@ void Menu::drawGui()
 {
 #if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	ImGui::Text("Version: r%s.%s (%s)", VersionStrings::GitRevCount, VersionStrings::GitShortHash, VersionStrings::CompilationDate);
+
+	if (ImGui::Button("Toggle shaders"))
+	{
+		Settings &settings = eventHandler_->settingsMut();
+		settings.withShaders = !settings.withShaders;
+		requestShaderEffectsChange_ = true;
+	}
 	ImGui::NewLine();
 
 	menuPage_->drawGui();
@@ -446,6 +473,28 @@ void Menu::onJoyMappedAxisMoved(const nc::JoyMappedAxisEvent &event)
 	menuPagePtr->updateAllEntriesText();
 }
 
+void Menu::onFrameStart()
+{
+	if (requestShaderEffectsChange_)
+	{
+		enableShaderEffects(eventHandler_->settings().withShaders);
+		requestShaderEffectsChange_ = false;
+	}
+
+	if (requestGame_)
+	{
+		enableShaderEffects(false);
+		eventHandler_->requestGame();
+		requestGame_ = false;
+	}
+
+	if (deferShaderEffectsChange)
+	{
+		requestShaderEffectsChange_ = true;
+		deferShaderEffectsChange = false;
+	}
+}
+
 void Menu::onQuitRequest()
 {
 	FATAL_ASSERT(menuPagePtr != nullptr);
@@ -455,6 +504,59 @@ void Menu::onQuitRequest()
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
+
+void Menu::enableShaderEffects(bool enabled)
+{
+	if (eventHandler_->shaderEffects().isInitialized() == false || shaderEffectsEnabled_ == enabled)
+		return;
+
+	if (enabled)
+	{
+		background_->setParent(backgroundRoot_.get());
+		darkForeground_->setParent(sceneRoot_.get());
+		gameTitleText_->setParent(foregroundRoot_.get());
+		versionText_->setParent(foregroundRoot_.get());
+		statusText_->setParent(foregroundRoot_.get());
+		menuPage_->setParent(foregroundRoot_.get());
+
+		background_->setFlippedY(true);
+		darkForeground_->setAlpha(128 + 52);
+
+		for (unsigned int i = 0; i < NumBubbles; i++)
+		{
+			nc::Sprite *bubble = bubbles_[i].get();
+			bubble->setParent(sceneRoot_.get());
+			eventHandler_->shaderEffects().setBubbleShader(bubble, i);
+		}
+
+		eventHandler_->shaderEffects().setupMenuViewports(this, backgroundRoot_.get(), sceneRoot_.get(), foregroundRoot_.get());
+	}
+	else
+	{
+		background_->setParent(this);
+		darkForeground_->setParent(this);
+		gameTitleText_->setParent(this);
+		versionText_->setParent(this);
+		statusText_->setParent(this);
+		menuPage_->setParent(this);
+
+		background_->setFlippedY(false);
+		darkForeground_->setAlpha(128);
+
+		for (unsigned int i = 0; i < NumBubbles; i++)
+		{
+			nc::Sprite *bubble = bubbles_[i].get();
+			nc::Texture *tex = resourceManager().retrieveTexture(Cfg::Textures::Bubbles[bubbleVariants_[i]]);
+			bubble->setTexture(tex);
+			bubble->setParent(this);
+			eventHandler_->shaderEffects().clearBubbleShader(i);
+		}
+
+		eventHandler_->shaderEffects().resetViewports();
+	}
+
+	shaderEffectsEnabled_ = enabled;
+}
 
 void Menu::setupPages()
 {
@@ -503,13 +605,19 @@ void Menu::setupPages()
 		MenuPage::PageEntry playersEntry("Players", nullptr, Menu::settingsPlayersFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry matchTimeEntry("Match Time", nullptr, Menu::settingsMatchTimeFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry volumeEntry("Volume", nullptr, Menu::settingsVolumeFunc, leftRightTextEventReplyBits);
+		MenuPage::PageEntry shadersEntry("Shaders", nullptr, Menu::settingsShadersFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry controlsEntry("Controls", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+
+		const bool shadersAvailable = menuPtr->eventHandler_->shaderEffects().isInitialized();
+		if (shadersAvailable == false)
+			shadersEntry = MenuPage::PageEntry("Shaders: n/a", nullptr);
 
 		settingsPage_ = {}; // clear the static variable
 		settingsPage_.entries.pushBack(playersEntry);
 		settingsPage_.entries.pushBack(matchTimeEntry);
 		settingsPage_.entries.pushBack(volumeEntry);
+		settingsPage_.entries.pushBack(shadersEntry);
 		settingsPage_.entries.pushBack(controlsEntry);
 		settingsPage_.entries.pushBack(backEntry);
 		settingsPage_.title = "Settings";
@@ -706,7 +814,7 @@ void Menu::simpleSelectFunc(MenuPage::EntryEvent &event)
 	switch (entry)
 	{
 		case START_GAME:
-			menuPtr->eventHandler_->requestGame();
+			menuPtr->requestGame_ = true;
 			break;
 		case GOTO_QUIT_PAGE:
 			menuPagePtr->setup(quitConfirmationPage_);
@@ -922,6 +1030,46 @@ void Menu::settingsVolumeFunc(MenuPage::EntryEvent &event)
 
 			event.entryText.format("%sVolume: %u%%%s", (gainPercentage > 0) ? "< " : "",
 			                       gainPercentage, (gainPercentage < 100) ? " >" : "");
+			break;
+		}
+		default:
+			break;
+	}
+}
+
+void Menu::settingsShadersFunc(MenuPage::EntryEvent &event)
+{
+	FATAL_ASSERT(menuPtr != nullptr);
+	const Settings &settings = menuPtr->eventHandler_->settings();
+	bool withShaders = settings.withShaders;
+
+	switch (event.type)
+	{
+		case MenuPage::EventType::LEFT:
+			withShaders = false;
+			break;
+		case MenuPage::EventType::RIGHT:
+			withShaders = true;
+			break;
+		default:
+			break;
+	}
+
+	switch (event.type)
+	{
+		case MenuPage::EventType::LEFT:
+		case MenuPage::EventType::RIGHT:
+			if (withShaders != settings.withShaders)
+			{
+				Settings &settingsMut = menuPtr->eventHandler_->settingsMut();
+				settingsMut.withShaders = withShaders;
+				menuPtr->requestShaderEffectsChange_ = true;
+				event.shouldUpdateEntryText = true;
+			}
+			break;
+		case MenuPage::EventType::TEXT:
+		{
+			event.entryText.format(withShaders ? "< Shaders: on" : "Shaders: off >");
 			break;
 		}
 		default:

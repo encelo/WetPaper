@@ -39,6 +39,9 @@ set(NCPROJECT_SOURCES
 	src/InputNames.cpp
 	src/Serializer.h
 	src/Serializer.cpp
+	src/shader_sources.h
+	src/ShaderEffects.h
+	src/ShaderEffects.cpp
 )
 
 option(CUSTOM_ITCHIO_BUILD "Create a build for the Itch.io store" ON)

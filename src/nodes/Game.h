@@ -30,6 +30,7 @@ class Game : public LogicNode
 	void onTick(float deltaTime) override;
 	void drawGui();
 
+	void onFrameStart();
 	void onQuitRequest();
 
 	static void playSound();
@@ -69,6 +70,10 @@ class Game : public LogicNode
 	nctl::UniquePtr<nc::TextNode> pointsAText_;
 	nctl::UniquePtr<nc::TextNode> pointsBText_;
 
+	nctl::UniquePtr<nc::SceneNode> backgroundRoot_;
+	nctl::UniquePtr<nc::SceneNode> sceneRoot_;
+	nctl::UniquePtr<nc::SceneNode> foregroundRoot_;
+
 	nc::TimeStamp matchTimer_;
 	nc::TimeStamp pauseTime_;
 	bool paused_;
@@ -90,6 +95,12 @@ class Game : public LogicNode
 	void togglePause();
 	void endMatch();
 	void saveStatistics();
+
+	bool requestMenu_ = false;
+	bool requestShaderEffectsChange_ = false;
+	bool requestPauseShaderEffectsChange_ = false;
+	bool shaderEffectsEnabled_ = false;
+	void enableShaderEffects(bool enabled);
 
 	void setupPages();
 	static void goToPausePage();
