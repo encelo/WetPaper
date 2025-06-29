@@ -11,6 +11,8 @@
 
 namespace {
 	char const *const SettingsVolumeString = "volume";
+	char const *const SettingsSfxVolumeString = "sfxVolume";
+	char const *const SettingsMusicVolumeString = "musicVolume";
 	char const *const SettingsNumPlayersString = "numPlayers";
 	char const *const SettingsMatchTimeString = "matchTime";
 	char const *const SettingsWithShadersString = "withShaders";
@@ -92,6 +94,8 @@ bool Serializer::loadSettings(Settings &settings)
 
 		const Settings defaultSettings;
 		settings.volume = toml::find_or<float>(data, SettingsVolumeString, defaultSettings.volume);
+		settings.sfxVolume = toml::find_or<float>(data, SettingsSfxVolumeString, defaultSettings.sfxVolume);
+		settings.musicVolume = toml::find_or<float>(data, SettingsMusicVolumeString, defaultSettings.musicVolume);
 		settings.numPlayers = toml::find_or<unsigned int>(data, SettingsNumPlayersString, defaultSettings.numPlayers);
 		settings.matchTime = toml::find_or<unsigned int>(data, SettingsMatchTimeString, defaultSettings.matchTime);
 		settings.withShaders = toml::find_or<bool>(data, SettingsWithShadersString, defaultSettings.withShaders);
@@ -115,6 +119,8 @@ bool Serializer::saveSettings(const Settings &settings)
 {
 	toml::value data = toml::value(toml::table{
 		{ SettingsVolumeString, settings.volume },
+		{ SettingsSfxVolumeString, settings.sfxVolume },
+		{ SettingsMusicVolumeString, settings.musicVolume },
 		{ SettingsNumPlayersString, settings.numPlayers },
 		{ SettingsMatchTimeString, settings.matchTime },
 		{ SettingsWithShadersString, settings.withShaders }

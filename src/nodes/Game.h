@@ -91,6 +91,7 @@ class Game : public LogicNode
 	void spawnBubble();
 	void destroyDeadBubbles();
 	void playPoppingSound();
+	void setSfxVolume();
 
 	void togglePause();
 	void endMatch();

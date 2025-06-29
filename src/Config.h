@@ -70,6 +70,13 @@ namespace Configuration
 		};
 	}
 
+	namespace UiSounds
+	{
+		char const * const Click = "sounds/ui_click.ogg";
+		char const * const Select = "sounds/ui_select.ogg";
+		char const * const Back = "sounds/ui_back.ogg";
+	}
+
 	namespace Sounds
 	{
 		const unsigned int NumBubblePops = 5;
@@ -86,6 +93,16 @@ namespace Configuration
 
 		const float MinSoundPitchBubble = 0.6f;
 		const float MaxSoundPitchBubble = 1.2f;
+	}
+
+	namespace Music
+	{
+		char const * const MenuMusic = "music/Serge Quadrado - Alone at Night.mp3.ogg";
+		char const * const GameMusic = "music/Maxim Novak - 09 Lunar Rush.ogg";
+		const float CrossfadeTime = 1.0f; // in seconds
+		const float EffectTime = 0.5f; // in seconds
+		const float MinGain = 0.5f; // minimum gain for the low-pass filter
+		const float MinGainHF = 0.25f; // high frequency minimum gain for the low-pass filter
 	}
 
 	namespace Fonts

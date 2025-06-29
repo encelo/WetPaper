@@ -14,6 +14,7 @@
 #include "../InputNames.h"
 #include "../Settings.h"
 #include "../Statistics.h"
+#include "../MusicManager.h"
 #include "../ShaderEffects.h"
 
 #include <nctl/HashSet.h>
@@ -166,6 +167,54 @@ namespace {
 			string.format("%02d:%02d", numMinutes, numSeconds);
 
 		return string;
+	}
+
+	bool genericSettingsVolumeFunc(MenuPage::EntryEvent &event, float &volumeSetting, const char *volumeString)
+	{
+		bool volumeChanged = false;
+		float gain = volumeSetting;
+
+		switch (event.type)
+		{
+			case MenuPage::EventType::LEFT:
+				gain -= Cfg::Settings::VolumeGainStep;
+				if (gain < Cfg::Settings::VolumeGainMin)
+					gain = Cfg::Settings::VolumeGainMin;
+				break;
+			case MenuPage::EventType::RIGHT:
+				gain += Cfg::Settings::VolumeGainStep;
+				if (gain > Cfg::Settings::VolumeGainMax)
+					gain = Cfg::Settings::VolumeGainMax;
+				break;
+			default:
+				break;
+		}
+
+		switch (event.type)
+		{
+			case MenuPage::EventType::LEFT:
+			case MenuPage::EventType::RIGHT:
+				if (gain != volumeSetting)
+				{
+					volumeSetting = gain;
+					volumeChanged = true;
+					event.shouldUpdateEntryText = true;
+				}
+				break;
+			case MenuPage::EventType::TEXT:
+			{
+				const unsigned gainPercentagePart = (static_cast<unsigned int>(gain * 100) + 1);
+				const unsigned gainPercentage = gainPercentagePart - gainPercentagePart % 10;
+
+				event.entryText.format("%s%s: %u%%%s", (gainPercentage > 0) ? "< " : "", volumeString,
+				                       gainPercentage, (gainPercentage < 100) ? " >" : "");
+				break;
+			}
+			default:
+				break;
+		}
+
+		return volumeChanged;
 	}
 }
 
@@ -605,6 +654,8 @@ void Menu::setupPages()
 		MenuPage::PageEntry playersEntry("Players", nullptr, Menu::settingsPlayersFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry matchTimeEntry("Match Time", nullptr, Menu::settingsMatchTimeFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry volumeEntry("Volume", nullptr, Menu::settingsVolumeFunc, leftRightTextEventReplyBits);
+		MenuPage::PageEntry sfxVolumeEntry("SFX Volume", nullptr, Menu::settingsSfxVolumeFunc, leftRightTextEventReplyBits);
+		MenuPage::PageEntry musicVolumeEntry("Music Volume", nullptr, Menu::settingsMusicVolumeFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry shadersEntry("Shaders", nullptr, Menu::settingsShadersFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry controlsEntry("Controls", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
@@ -617,6 +668,8 @@ void Menu::setupPages()
 		settingsPage_.entries.pushBack(playersEntry);
 		settingsPage_.entries.pushBack(matchTimeEntry);
 		settingsPage_.entries.pushBack(volumeEntry);
+		settingsPage_.entries.pushBack(sfxVolumeEntry);
+		settingsPage_.entries.pushBack(musicVolumeEntry);
 		settingsPage_.entries.pushBack(shadersEntry);
 		settingsPage_.entries.pushBack(controlsEntry);
 		settingsPage_.entries.pushBack(backEntry);
@@ -991,50 +1044,38 @@ void Menu::settingsMatchTimeFunc(MenuPage::EntryEvent &event)
 void Menu::settingsVolumeFunc(MenuPage::EntryEvent &event)
 {
 	FATAL_ASSERT(menuPtr != nullptr);
-	const Settings &settings = menuPtr->eventHandler_->settings();
-	float gain = settings.volume;
+	Settings &settingsMut = menuPtr->eventHandler_->settingsMut();
 
-	switch (event.type)
+	const bool volumeChanged = genericSettingsVolumeFunc(event, settingsMut.volume, "Volume");
+	if (volumeChanged)
 	{
-		case MenuPage::EventType::LEFT:
-			gain -= Cfg::Settings::VolumeGainStep;
-			if (gain < Cfg::Settings::VolumeGainMin)
-				gain = Cfg::Settings::VolumeGainMin;
-			break;
-		case MenuPage::EventType::RIGHT:
-			gain += Cfg::Settings::VolumeGainStep;
-			if (gain > Cfg::Settings::VolumeGainMax)
-				gain = Cfg::Settings::VolumeGainMax;
-			break;
-		default:
-			break;
+		menuPtr->eventHandler_->musicManager().updateVolume();
+		const float targetVolume = settingsMut.sfxVolume * settingsMut.volume;
+		menuPtr->menuPage_->setSfxVolume(targetVolume);
 	}
+}
 
-	switch (event.type)
+void Menu::settingsSfxVolumeFunc(MenuPage::EntryEvent &event)
+{
+	FATAL_ASSERT(menuPtr != nullptr);
+	Settings &settingsMut = menuPtr->eventHandler_->settingsMut();
+
+	const bool volumeChanged = genericSettingsVolumeFunc(event, settingsMut.sfxVolume, "SFX Volume");
+	if (volumeChanged)
 	{
-		case MenuPage::EventType::LEFT:
-		case MenuPage::EventType::RIGHT:
-			if (gain != settings.volume)
-			{
-				nc::IAudioDevice &audioDevice = nc::theServiceLocator().audioDevice();
-				audioDevice.setGain(gain);
-				Settings &settingsMut = menuPtr->eventHandler_->settingsMut();
-				settingsMut.volume = gain;
-				event.shouldUpdateEntryText = true;
-			}
-			break;
-		case MenuPage::EventType::TEXT:
-		{
-			const unsigned gainPercentagePart = (static_cast<unsigned int>(gain * 100) + 1);
-			const unsigned gainPercentage = gainPercentagePart - gainPercentagePart % 10;
-
-			event.entryText.format("%sVolume: %u%%%s", (gainPercentage > 0) ? "< " : "",
-			                       gainPercentage, (gainPercentage < 100) ? " >" : "");
-			break;
-		}
-		default:
-			break;
+		const float targetVolume = settingsMut.sfxVolume * settingsMut.volume;
+		menuPtr->menuPage_->setSfxVolume(targetVolume);
 	}
+}
+
+void Menu::settingsMusicVolumeFunc(MenuPage::EntryEvent &event)
+{
+	FATAL_ASSERT(menuPtr != nullptr);
+	Settings &settingsMut = menuPtr->eventHandler_->settingsMut();
+
+	const bool volumeChanged = genericSettingsVolumeFunc(event, settingsMut.musicVolume, "Music Volume");
+	if (volumeChanged)
+		menuPtr->eventHandler_->musicManager().updateVolume();
 }
 
 void Menu::settingsShadersFunc(MenuPage::EntryEvent &event)

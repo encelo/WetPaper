@@ -47,3 +47,6 @@ You can find the original version here: https://globalgamejam.org/games/2025/pap
 
 - Add a custom refraction shader for bubbles and a separable blur filter for the pause screen
 - Add an entry in the settings menu page to enable or disable shaders
+
+- Add a menu and a game music with crossfading between them
+- Add a low-pass filter to muffle down music when the game is paused

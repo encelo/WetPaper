@@ -11,6 +11,7 @@
 #include "ResourceManager.h"
 #include "InputActions.h"
 #include "Serializer.h"
+#include "MusicManager.h"
 #include "ShaderEffects.h"
 #include "nodes/SplashScreen.h"
 #include "nodes/Menu.h"
@@ -85,13 +86,12 @@ void MyEventHandler::onInit()
 
 	inputActionsMut().setupBindings();
 
-	nc::IAudioDevice &audioDevice = nc::theServiceLocator().audioDevice();
-	audioDevice.setGain(settings_.volume);
-
+	musicManager_ = nctl::makeUnique<MusicManager>(this);
 	shaderEffects_ = nctl::makeUnique<ShaderEffects>();
 	nc::SceneNode &rootNode = nc::theApplication().rootNode();
 #ifdef NCPROJECT_DEBUG
 	menu_ = nctl::makeUnique<Menu>(&rootNode, "MENU", this);
+	musicManager_->goToMainMenu();
 #else
 	splashScreen_ = nctl::makeUnique<SplashScreen>(&rootNode, "SPLASHSCREEN", this);
 #endif
@@ -127,6 +127,8 @@ void MyEventHandler::onFrameStart()
 		requestGameTransition_ = false;
 	}
 
+	musicManager_->onFrameStart();
+
 #if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	if (showInterface)
 	{
@@ -150,6 +152,7 @@ void MyEventHandler::onFrameStart()
 
 			if (splashScreen_ != nullptr)
 				splashScreen_->drawGui();
+			musicManager_->drawGui();
 			if (menu_ != nullptr)
 				menu_->drawGui();
 			if (game_ != nullptr)
@@ -213,6 +216,11 @@ bool MyEventHandler::onQuitRequest()
 #endif
 }
 
+MusicManager &MyEventHandler::musicManager()
+{
+	return *musicManager_;
+}
+
 ShaderEffects &MyEventHandler::shaderEffects()
 {
 	return *shaderEffects_;
@@ -258,6 +266,7 @@ void MyEventHandler::showGame()
 
 	nc::SceneNode &rootNode = nc::theApplication().rootNode();
 	game_ = nctl::makeUnique<Game>(&rootNode, "GAME", this);
+	musicManager_->goToGame();
 }
 
 void MyEventHandler::showMenu()
@@ -267,4 +276,5 @@ void MyEventHandler::showMenu()
 
 	nc::SceneNode &rootNode = nc::theApplication().rootNode();
 	menu_ = nctl::makeUnique<Menu>(&rootNode, "MENU", this);
+	musicManager_->goToMainMenu();
 }

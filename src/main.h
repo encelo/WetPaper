@@ -11,6 +11,7 @@ namespace ncine {
 	class AppConfiguration;
 	class Viewport;
 }
+class MusicManager;
 class ShaderEffects;
 class SplashScreen;
 class Menu;
@@ -38,6 +39,7 @@ class MyEventHandler :
 
 	bool onQuitRequest() override;
 
+	MusicManager &musicManager();
 	ShaderEffects &shaderEffects();
 	void requestMenu();
 	void requestGame();
@@ -54,6 +56,7 @@ class MyEventHandler :
 	void showMenu();
 	void showGame();
 
+	nctl::UniquePtr<MusicManager> musicManager_;
 	nctl::UniquePtr<ShaderEffects> shaderEffects_;
 	nctl::UniquePtr<SplashScreen> splashScreen_;
 	nctl::UniquePtr<Menu> menu_;

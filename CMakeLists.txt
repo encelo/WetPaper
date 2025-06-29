@@ -39,6 +39,8 @@ set(NCPROJECT_SOURCES
 	src/InputNames.cpp
 	src/Serializer.h
 	src/Serializer.cpp
+	src/MusicManager.h
+	src/MusicManager.cpp
 	src/shader_sources.h
 	src/ShaderEffects.h
 	src/ShaderEffects.cpp

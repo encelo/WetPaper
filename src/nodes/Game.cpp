@@ -12,6 +12,7 @@
 #include "../InputActions.h"
 #include "../Settings.h"
 #include "../main.h"
+#include "../MusicManager.h"
 #include "../ShaderEffects.h"
 
 #include <ncine/Application.h>
@@ -185,6 +186,8 @@ void Game::drawGui()
 	{
 		const Settings &settings = eventHandler_->settings();
 		ImGui::Text("Volume: %.1f", settings.volume);
+		ImGui::Text("SFX Volume: %.1f", settings.sfxVolume);
+		ImGui::Text("Music Volume: %.1f", settings.musicVolume);
 		ImGui::Text("Number of players: %d", settings.numPlayers);
 		ImGui::Text("Match time: %d", settings.matchTime);
 		ImGui::Text("Shaders: %s", settings.withShaders ? "on" : "off");
@@ -406,10 +409,13 @@ void Game::loadScene()
 	timeText_->setString(auxString);
 	timeText_->setPosition((screenTopRight - timeText_->absSize() * 0.5f) * Cfg::Gui::TimeTextRelativePos);
 
+	const Settings &settings = eventHandler_->settings();
+	const float targetVolume = settings.sfxVolume * settings.volume;
 	for (unsigned int i = 0; i < Cfg::Sounds::NumBubblePopPlayers; i++)
 	{
 		nctl::UniquePtr<nc::AudioBufferPlayer> poppingPlayer =
 		    nctl::makeUnique<nc::AudioBufferPlayer>(resourceManager().retrieveAudioBuffer(Cfg::Sounds::BubblePops[i % Cfg::Sounds::NumBubblePops]));
+		poppingPlayer->setGain(targetVolume);
 		poppingPlayers_.pushBack(nctl::move(poppingPlayer));
 	}
 
@@ -521,6 +527,15 @@ void Game::playPoppingSound()
 	player.play();
 }
 
+void Game::setSfxVolume()
+{
+	const Settings &settings = eventHandler_->settings();
+	const float targetVolume = settings.sfxVolume * settings.volume;
+
+	for (unsigned int i = 0; i < Cfg::Sounds::NumBubblePopPlayers; i++)
+		poppingPlayers_[i]->setGain(targetVolume);
+}
+
 void Game::togglePause()
 {
 	// The following code allows the `GAME_PAUSE` action key to be shared with the `UI_BACK` one
@@ -542,13 +557,14 @@ void Game::togglePause()
 	if (paused_)
 	{
 		pauseTime_ = nc::TimeStamp::now();
-		audioDevice.pauseDevice();
+		audioDevice.pausePlayers(nc::IAudioDevice::PlayerType::BUFFER);
 	}
 	else
 	{
-		audioDevice.resumeDevice();
+		audioDevice.resumePlayers();
 		matchTimer_ += (nc::TimeStamp::now() - pauseTime_);
 	}
+	eventHandler_->musicManager().togglePause();
 
 	if (shaderEffectsEnabled_)
 		requestPauseShaderEffectsChange_ = true;

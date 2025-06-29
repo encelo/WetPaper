@@ -13,6 +13,7 @@
 #include <ncine/Font.h>
 #include <ncine/TextNode.h>
 #include <ncine/FileSystem.h>
+#include <ncine/AudioBufferPlayer.h>
 
 #if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 namespace {
@@ -48,6 +49,10 @@ MenuPage::MenuPage(SceneNode *parent, nctl::String name)
 
 		entryTextNodes_.pushBack(nctl::move(textNode));
 	}
+
+	clickSoundPlayer_ = nctl::makeUnique<nc::AudioBufferPlayer>(resourceManager().retrieveAudioBuffer(Cfg::UiSounds::Click));
+	selectSoundPlayer_ = nctl::makeUnique<nc::AudioBufferPlayer>(resourceManager().retrieveAudioBuffer(Cfg::UiSounds::Select));
+	backSoundPlayer_ = nctl::makeUnique<nc::AudioBufferPlayer>(resourceManager().retrieveAudioBuffer(Cfg::UiSounds::Back));
 }
 
 MenuPage::EntryEvent::EntryEvent(EventType tt, nctl::String &text, void *data)
@@ -119,7 +124,7 @@ void MenuPage::setup(const PageConfig &config)
 	setHovered(hoveredEntry_, true);
 	// If the first entry is not hoverable, go to the next valid one
 	if (isHoverable(hoveredEntry_) == false)
-		actionDown();
+		actionDown(false);
 }
 
 void MenuPage::updateEntryText(unsigned int entryIndex)
@@ -154,6 +159,13 @@ void MenuPage::enableActions(bool value)
 	actionsEnabled_ = value;
 }
 
+void MenuPage::setSfxVolume(float gain)
+{
+	clickSoundPlayer_->setGain(gain);
+	selectSoundPlayer_->setGain(gain);
+	backSoundPlayer_->setGain(gain);
+}
+
 void MenuPage::onTick(float deltaTime)
 {
 	if (actionsEnabled_ == false)
@@ -163,9 +175,9 @@ void MenuPage::onTick(float deltaTime)
 	const InputActions &ia = inputActions();
 
 	if (ib.isTriggered(ia.UI_NEXT))
-		actionDown();
+		actionDown(true);
 	else if (ib.isTriggered(ia.UI_PREV))
-		actionUp();
+		actionUp(true);
 	else if (ib.isTriggered(ia.UI_LEFT))
 		actionEntry(EventType::LEFT, hoveredEntry_);
 	else if (ib.isTriggered(ia.UI_RIGHT))
@@ -237,7 +249,7 @@ void MenuPage::drawGui()
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void MenuPage::actionUp()
+void MenuPage::actionUp(bool withSound)
 {
 	if (hoveredEntry_ > 0)
 	{
@@ -256,11 +268,18 @@ void MenuPage::actionUp()
 			setHovered(hoveredEntry_, false);
 			setHovered(aboveEntry, true);
 			hoveredEntry_ = aboveEntry;
+
+			// Avoid playing a sound when looking for the first valid entry
+			if (withSound)
+			{
+				clickSoundPlayer_->stop();
+				clickSoundPlayer_->play();
+			}
 		}
 	}
 }
 
-void MenuPage::actionDown()
+void MenuPage::actionDown(bool withSound)
 {
 	const unsigned int numEntries = config_.entries.size();
 	if (hoveredEntry_ < numEntries - 1)
@@ -280,6 +299,13 @@ void MenuPage::actionDown()
 			setHovered(hoveredEntry_, false);
 			setHovered(belowEntry, true);
 			hoveredEntry_ = belowEntry;
+
+			// Avoid playing a sound when looking for the first valid entry
+			if (withSound)
+			{
+				clickSoundPlayer_->stop();
+				clickSoundPlayer_->play();
+			}
 		}
 	}
 }
@@ -290,18 +316,32 @@ void MenuPage::actionEntry(EventType type, unsigned int entryIndex)
 	if (entry.eventFunc == nullptr)
 		return;
 
+	// Checking the event before calling a function that could change it by loading another page
+	const bool noEntryTextChange = (entry.eventReplyBits.test(PageEntry::TextBitPos) == false);
+
 	EntryEvent event(type, entry.text, entry.data);
 	entry.eventFunc(event);
 
 	if (event.shouldUpdateEntryText)
 		updateEntryText(entryIndex);
+
+	if (noEntryTextChange || event.shouldUpdateEntryText)
+	{
+		selectSoundPlayer_->stop();
+		selectSoundPlayer_->play();
+	}
 }
 
 void MenuPage::actionBack()
 {
 	PageConfig::BackFunctionT *backFunc = config_.backFunc;
 	if (backFunc != nullptr)
+	{
 		backFunc();
+
+		backSoundPlayer_->stop();
+		backSoundPlayer_->play();
+	}
 }
 
 /* \note An entry with no event function, or that just reply to the `TEXT` one, cannot be hovered */

@@ -7,6 +7,7 @@
 namespace ncine {
 	class Font;
 	class TextNode;
+	class AudioBufferPlayer;
 }
 class Menu;
 
@@ -71,6 +72,7 @@ class MenuPage : public LogicNode
 	void updateEntryText(unsigned int entryIndex);
 	void updateAllEntriesText();
 	void enableActions(bool value);
+	void setSfxVolume(float gain);
 
 	void onTick(float deltaTime) override;
 	void drawGui();
@@ -81,11 +83,15 @@ class MenuPage : public LogicNode
 	nctl::UniquePtr<nc::TextNode> titleTextNode_;
 	nctl::StaticArray<nctl::UniquePtr<nc::TextNode>, MaxNumEntries> entryTextNodes_;
 
+	nctl::UniquePtr<nc::AudioBufferPlayer> clickSoundPlayer_;
+	nctl::UniquePtr<nc::AudioBufferPlayer> selectSoundPlayer_;
+	nctl::UniquePtr<nc::AudioBufferPlayer> backSoundPlayer_;
+
 	unsigned int hoveredEntry_;
 	bool actionsEnabled_;
 
-	void actionUp();
-	void actionDown();
+	void actionUp(bool withSound);
+	void actionDown(bool withSound);
 	void actionEntry(EventType type, unsigned int entryIndex);
 	void actionBack();
 
