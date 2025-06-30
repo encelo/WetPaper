@@ -258,6 +258,7 @@ void Player::drawGui()
 void Player::onBubbleTouched(Bubble *bubble)
 {
 	bubble->touched();
+	Game::vibrateJoy(index_);
 	points_++;
 	statistics_.numCatchedBubbles++;
 }

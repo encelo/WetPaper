@@ -50,3 +50,6 @@ You can find the original version here: https://globalgamejam.org/games/2025/pap
 
 - Add a menu and a game music with crossfading between them
 - Add a low-pass filter to muffle down music when the game is paused
+
+- Add joystick vibration when the user pops a bubble
+- Add an entry in the controls menu page to enable or disable joystick vibration

@@ -10,6 +10,7 @@ struct Settings
 	unsigned int numPlayers = 1;
 	unsigned int matchTime = 60;
 	bool withShaders = true;
+	bool withVibration = true;
 
 	ncine::Recti windowState;
 };

@@ -16,6 +16,7 @@ namespace {
 	char const *const SettingsNumPlayersString = "numPlayers";
 	char const *const SettingsMatchTimeString = "matchTime";
 	char const *const SettingsWithShadersString = "withShaders";
+	char const *const SettingsWithVibrationString = "withVibration";
 	char const *const SettingsWindowStateString = "windowState";
 
 	char const *const StatisticsPlayTimeString = "playTime";
@@ -99,6 +100,7 @@ bool Serializer::loadSettings(Settings &settings)
 		settings.numPlayers = toml::find_or<unsigned int>(data, SettingsNumPlayersString, defaultSettings.numPlayers);
 		settings.matchTime = toml::find_or<unsigned int>(data, SettingsMatchTimeString, defaultSettings.matchTime);
 		settings.withShaders = toml::find_or<bool>(data, SettingsWithShadersString, defaultSettings.withShaders);
+		settings.withVibration = toml::find_or<bool>(data, SettingsWithVibrationString, defaultSettings.withVibration);
 
 		if (data.contains(SettingsWindowStateString) && data.at(SettingsWindowStateString).is_table())
 			settings.windowState = deserializeRect(toml::find(data, SettingsWindowStateString));
@@ -123,7 +125,8 @@ bool Serializer::saveSettings(const Settings &settings)
 		{ SettingsMusicVolumeString, settings.musicVolume },
 		{ SettingsNumPlayersString, settings.numPlayers },
 		{ SettingsMatchTimeString, settings.matchTime },
-		{ SettingsWithShadersString, settings.withShaders }
+		{ SettingsWithShadersString, settings.withShaders },
+		{ SettingsWithVibrationString, settings.withVibration }
 	});
 
 	data[SettingsWindowStateString] = serializeRect(settings.windowState);

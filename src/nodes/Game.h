@@ -36,6 +36,7 @@ class Game : public LogicNode
 	static void playSound();
 	static void killBubble(Bubble *bubblePtr);
 	static void incrementDroppedBubble();
+	static void vibrateJoy(int index);
 
   private:
 	MyEventHandler *eventHandler_;

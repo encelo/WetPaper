@@ -191,6 +191,7 @@ void Game::drawGui()
 		ImGui::Text("Number of players: %d", settings.numPlayers);
 		ImGui::Text("Match time: %d", settings.matchTime);
 		ImGui::Text("Shaders: %s", settings.withShaders ? "on" : "off");
+		ImGui::Text("Vibration: %s", settings.withVibration ? "on" : "off");
 		ImGui::TreePop();
 	}
 
@@ -315,6 +316,17 @@ void Game::incrementDroppedBubble()
 {
 	FATAL_ASSERT(gamePtr != nullptr);
 	gamePtr->statistics_.numDroppedBubles++;
+}
+
+void Game::vibrateJoy(int index)
+{
+	FATAL_ASSERT(gamePtr != nullptr);
+	if (gamePtr->eventHandler_->settings().withVibration == false)
+		return;
+
+	nc::IInputManager &inputManager = nc::theApplication().inputManager();
+	if (inputManager.isJoyPresent(index) && inputManager.hasJoyVibration(index))
+		inputManager.joyVibrate(index, 0.2f, 0.7f, 200);
 }
 
 ///////////////////////////////////////////////////////////

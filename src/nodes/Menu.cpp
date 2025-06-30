@@ -719,6 +719,11 @@ void Menu::setupPages()
 		MenuPage::PageEntry keyboardP2Entry("Keyboard P2", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_KEYBOARD_CONTROLS_P2_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 		MenuPage::PageEntry joystickP1Entry("Joystick P1", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_JOYSTICK_CONTROLS_P1_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 		MenuPage::PageEntry joystickP2Entry("Joystick P2", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_JOYSTICK_CONTROLS_P2_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
+#if NCINE_WITH_GLFW || NCINE_WITH_QT5
+		MenuPage::PageEntry vibrationEntry("Vibration: n/a", nullptr);
+#else
+		MenuPage::PageEntry vibrationEntry("Vibration", nullptr, Menu::settingsVibrationFunc, leftRightTextEventReplyBits);
+#endif
 		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_SETTINGS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 
 		controlsPage_ = {}; // clear the static variable
@@ -726,6 +731,7 @@ void Menu::setupPages()
 		controlsPage_.entries.pushBack(keyboardP2Entry);
 		controlsPage_.entries.pushBack(joystickP1Entry);
 		controlsPage_.entries.pushBack(joystickP2Entry);
+		controlsPage_.entries.pushBack(vibrationEntry);
 		controlsPage_.entries.pushBack(backEntry);
 		controlsPage_.title = "Controls";
 		controlsPage_.backFunc = Menu::goToSettingsPage;
@@ -1111,6 +1117,45 @@ void Menu::settingsShadersFunc(MenuPage::EntryEvent &event)
 		case MenuPage::EventType::TEXT:
 		{
 			event.entryText.format(withShaders ? "< Shaders: on" : "Shaders: off >");
+			break;
+		}
+		default:
+			break;
+	}
+}
+
+void Menu::settingsVibrationFunc(MenuPage::EntryEvent &event)
+{
+	FATAL_ASSERT(menuPtr != nullptr);
+	const Settings &settings = menuPtr->eventHandler_->settings();
+	bool withVibration = settings.withVibration;
+
+	switch (event.type)
+	{
+		case MenuPage::EventType::LEFT:
+			withVibration = false;
+			break;
+		case MenuPage::EventType::RIGHT:
+			withVibration = true;
+			break;
+		default:
+			break;
+	}
+
+	switch (event.type)
+	{
+		case MenuPage::EventType::LEFT:
+		case MenuPage::EventType::RIGHT:
+			if (withVibration != settings.withVibration)
+			{
+				Settings &settingsMut = menuPtr->eventHandler_->settingsMut();
+				settingsMut.withVibration = withVibration;
+				event.shouldUpdateEntryText = true;
+			}
+			break;
+		case MenuPage::EventType::TEXT:
+		{
+			event.entryText.format(withVibration ? "< Vibration: on" : "Vibration: off >");
 			break;
 		}
 		default:

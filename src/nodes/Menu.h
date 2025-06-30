@@ -89,6 +89,7 @@ class Menu : public LogicNode
 	static void settingsSfxVolumeFunc(MenuPage::EntryEvent &event);
 	static void settingsMusicVolumeFunc(MenuPage::EntryEvent &event);
 	static void settingsShadersFunc(MenuPage::EntryEvent &event);
+	static void settingsVibrationFunc(MenuPage::EntryEvent &event);
 	static void keyboardControlsFunc(MenuPage::EntryEvent &event);
 	static void joystickControlsFunc(MenuPage::EntryEvent &event);
 };
