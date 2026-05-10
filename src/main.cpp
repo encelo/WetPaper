@@ -61,20 +61,20 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	Serializer::loadSettings(settings_);
 	Serializer::loadStatistics(statistics_);
 
-	config.windowTitle = "Wet Paper";
-	config.windowIconFilename = "icon48.png";
+	config.window.position = nc::Vector2i(settings_.windowState.x, settings_.windowState.y);
 
-	config.windowPosition = nc::Vector2i(settings_.windowState.x, settings_.windowState.y);
+	config.window.title = "Wet Paper";
+	config.window.iconFilename = "icon48.png";
 #ifndef NCPROJECT_DEBUG
-	config.resizable = false;
-	config.resolution = Cfg::Game::Resolution;
-	config.consoleLogLevel = nc::ILogger::LogLevel::OFF;
+	config.logging.consoleLevel = nc::ILogger::LogLevel::OFF;
+	config.window.resolution = Cfg::Game::Resolution;
+	config.window.resizable = false;
 #else
 	#ifndef __EMSCRIPTEN__
-	config.resizable = true; // not working when shaders are enabled
+	config.window.resizable = true; // not working when shaders are enabled
 	#endif
-	config.resolution = nc::Vector2i(settings_.windowState.w, settings_.windowState.h);
-	config.consoleLogLevel = nc::ILogger::LogLevel::INFO;
+	config.logging.consoleLevel = nc::ILogger::LogLevel::INFO;
+	config.window.resolution = nc::Vector2i(settings_.windowState.w, settings_.windowState.h);
 #endif
 }
 
@@ -133,9 +133,9 @@ void MyEventHandler::onFrameStart()
 	if (showInterface)
 	{
 		const float scalingFactor = nc::theApplication().gfxDevice().windowScalingFactor();
-		if (ImGui::GetIO().FontGlobalScale != scalingFactor)
+		if (ImGui::GetStyle().FontScaleMain != scalingFactor)
 		{
-			ImGui::GetIO().FontGlobalScale = scalingFactor;
+			ImGui::GetStyle().FontScaleMain = scalingFactor;
 			ImGui::GetStyle() = ImGuiStyle();
 			ImGui::GetStyle().ScaleAllSizes(scalingFactor);
 		}

@@ -66,8 +66,8 @@ Serializer &serializer()
 bool Serializer::loadSettings(Settings &settings)
 {
 	// Initialize the window state rectangle with sane values
-	settings.windowState.set(nc::AppConfiguration::WindowPositionIgnore,
-	                         nc::AppConfiguration::WindowPositionIgnore, Cfg::Game::Resolution);
+	settings.windowState.set(nc::AppConfiguration::Window::IgnorePosition,
+	                         nc::AppConfiguration::Window::IgnorePosition, Cfg::Game::Resolution);
 
 	const nctl::String settingsFilepath = nc::fs::joinPath(nc::fs::savePath(), Cfg::SettingsFilename);
 
