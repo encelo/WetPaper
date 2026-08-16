@@ -190,6 +190,7 @@ void Game::drawGui()
 		ImGui::Text("Music Volume: %.1f", settings.musicVolume);
 		ImGui::Text("Number of players: %d", settings.numPlayers);
 		ImGui::Text("Match time: %d", settings.matchTime);
+		ImGui::Text("Fullscreen: %s", settings.fullscreen ? "on" : "off");
 		ImGui::Text("Shaders: %s", settings.withShaders ? "on" : "off");
 		ImGui::Text("Vibration: %s", settings.withVibration ? "on" : "off");
 		ImGui::TreePop();
@@ -288,6 +289,28 @@ void Game::onFrameStart()
 	}
 }
 
+void Game::onResizeWindow(int width, int height)
+{
+	layoutForScreenSize(nc::Vector2f(static_cast<float>(width), static_cast<float>(height)));
+
+	// All bubbles need to be rebound so that their materials point at the new ping-pong textures
+	// set by `ShaderEffects::onResizeWindow()`. Each bubble is bound with its own stable `poolIndex()`.
+	if (shaderEffectsEnabled_)
+	{
+		nctl::StaticArray<Bubble *, Cfg::Game::BubblePoolSize> allBubbles;
+		for (unsigned int i = 0; i < bubblePool_.size(); i++)
+			allBubbles.pushBack(bubblePool_[i].get());
+		for (unsigned int i = 0; i < bubbles_.size(); i++)
+			allBubbles.pushBack(bubbles_[i].get());
+
+		for (unsigned int i = 0; i < allBubbles.size(); i++)
+		{
+			nc::Sprite *bubbleSprite = allBubbles[i]->sprite();
+			eventHandler_->shaderEffects().setBubbleShader(bubbleSprite, allBubbles[i]->poolIndex());
+		}
+	}
+}
+
 void Game::onQuitRequest()
 {
 	if (paused_ == false && matchEnded_ == false)
@@ -349,15 +372,9 @@ void Game::loadScene()
 	this->setScale(windowScaling);
 
 	background_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::Background));
-	background_->setPosition(screenTopRight * 0.5f);
 	background_->setLayer(Cfg::Layers::Background);
-#ifdef __EMSCRIPTEN__
-	background_->setSize(screenTopRight);
-#endif
 
 	darkForeground_ = nctl::makeUnique<nc::Sprite>(this, nullptr);
-	darkForeground_->setSize(screenTopRight);
-	darkForeground_->setPosition(screenTopRight * 0.5f);
 	darkForeground_->setColor(0, 0, 0, 128);
 	darkForeground_->setLayer(Cfg::Layers::Menu_Page - 128);
 	darkForeground_->setEnabled(false);
@@ -370,17 +387,14 @@ void Game::loadScene()
 	redBarFill_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::RedBarFill));
 
 	redBar_->setLayer(Cfg::Layers::Gui_StaminaBar);
-	redBar_->setPosition(screenTopRight * Cfg::Gui::RedBarRelativePos);
 	redBar_->setScale(Cfg::Gui::BarScale);
 	redBarFill_->setLayer(Cfg::Layers::Gui_StaminaBar_Fill);
-	redBarFill_->setPosition(screenTopRight * Cfg::Gui::RedBarRelativePos);
 	redBarFill_->setScale(Cfg::Gui::BarScale);
 
 	pointsAText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
 	pointsAText_->setLayer(Cfg::Layers::Gui_Text);
 	pointsAText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
 	pointsAText_->setString("0");
-	pointsAText_->setPosition((screenTopRight - pointsAText_->absSize() * 0.5f) * Cfg::Gui::PointsATextRelativePos);
 
 	playerA_ = nctl::makeUnique<Player>(this, "Player A", 0);
 
@@ -390,17 +404,14 @@ void Game::loadScene()
 		blueBarFill_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::BlueBarFill));
 
 		blueBar_->setLayer(Cfg::Layers::Gui_StaminaBar);
-		blueBar_->setPosition(screenTopRight * Cfg::Gui::BlueBarRelativePos);
 		blueBar_->setScale(Cfg::Gui::BarScale);
 		blueBarFill_->setLayer(Cfg::Layers::Gui_StaminaBar_Fill);
-		blueBarFill_->setPosition(screenTopRight * Cfg::Gui::BlueBarRelativePos);
 		blueBarFill_->setScale(Cfg::Gui::BarScale);
 
 		pointsBText_ = nctl::makeUnique<nc::TextNode>(this, font_.get(), 256);
 		pointsBText_->setLayer(Cfg::Layers::Gui_Text);
 		pointsBText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
 		pointsBText_->setString("0");
-		pointsBText_->setPosition((screenTopRight - pointsBText_->absSize() * 0.5f) * Cfg::Gui::PointsBTextRelativePos);
 
 		playerB_ = nctl::makeUnique<Player>(this, "Player B", 1);
 	}
@@ -409,7 +420,7 @@ void Game::loadScene()
 	{
 		auxString.format("Bubble #%u", i);
 		const unsigned int variant = nc::random().integer(0, Cfg::Textures::NumBubbleVariants);
-		nctl::UniquePtr<Bubble> bubble = nctl::makeUnique<Bubble>(this, auxString.data(), nc::Vector2f::Zero, variant);
+		nctl::UniquePtr<Bubble> bubble = nctl::makeUnique<Bubble>(this, auxString.data(), nc::Vector2f::Zero, variant, i);
 		bubble->onKilled();
 		bubblePool_.pushBack(nctl::move(bubble));
 	}
@@ -419,7 +430,6 @@ void Game::loadScene()
 	timeText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
 	auxString.format("%d", eventHandler_->settings().matchTime);
 	timeText_->setString(auxString);
-	timeText_->setPosition((screenTopRight - timeText_->absSize() * 0.5f) * Cfg::Gui::TimeTextRelativePos);
 
 	const Settings &settings = eventHandler_->settings();
 	const float targetVolume = settings.sfxVolume * settings.volume;
@@ -461,9 +471,10 @@ void Game::loadScene()
 
 	menuPage_ = nctl::makeUnique<MenuPage>(this, "MenuPage");
 	menuPagePtr = menuPage_.get();
-	menuPage_->setPosition(screenTopRight * Cfg::Menu::MenuPageRelativePos);
 	menuPage_->setEnabled(false);
 	setupPages();
+
+	layoutForScreenSize(screenTopRight);
 
 	// Scene nodes used to setup shader effects
 	backgroundRoot_ = nctl::makeUnique<nc::SceneNode>(this);
@@ -476,6 +487,34 @@ void Game::loadScene()
 	foregroundRoot_->setDeleteChildrenOnDestruction(false);
 
 	requestShaderEffectsChange_ = true;
+}
+
+void Game::layoutForScreenSize(const nc::Vector2f &screenTopRight)
+{
+	background_->setPosition(screenTopRight * 0.5f);
+	background_->setSize(screenTopRight);
+
+	darkForeground_->setSize(screenTopRight);
+	darkForeground_->setPosition(screenTopRight * 0.5f);
+
+	redBar_->setPosition(screenTopRight * Cfg::Gui::RedBarRelativePos);
+	redBarFill_->setPosition(screenTopRight * Cfg::Gui::RedBarRelativePos);
+	pointsAText_->setPosition((screenTopRight - pointsAText_->absSize() * 0.5f) * Cfg::Gui::PointsATextRelativePos);
+
+	if (blueBar_ != nullptr)
+	{
+		blueBar_->setPosition(screenTopRight * Cfg::Gui::BlueBarRelativePos);
+		blueBarFill_->setPosition(screenTopRight * Cfg::Gui::BlueBarRelativePos);
+		pointsBText_->setPosition((screenTopRight - pointsBText_->absSize() * 0.5f) * Cfg::Gui::PointsBTextRelativePos);
+	}
+
+	timeText_->setPosition((screenTopRight - timeText_->absSize() * 0.5f) * Cfg::Gui::TimeTextRelativePos);
+
+	menuPage_->setPosition(screenTopRight * Cfg::Menu::MenuPageRelativePos);
+
+	// Keep the floor and right-side wall anchored to the new screen edges
+	obstacle1_->setPosition(screenTopRight.x * 0.5f, 0.0f);
+	obstacle3_->setPosition(screenTopRight.x, screenTopRight.y);
 }
 
 void Game::spawnBubbles()
@@ -654,7 +693,7 @@ void Game::enableShaderEffects(bool enabled)
 		menuPage_->setParent(foregroundRoot_.get());
 
 		background_->setFlippedY(true);
-		darkForeground_->setAlpha(128 + 52);
+		darkForeground_->setAlpha(128 + 53);
 
 		nctl::StaticArray<Bubble *, Cfg::Game::BubblePoolSize> allBubbles;
 		for (unsigned int i = 0; i < bubblePool_.size(); i++)
@@ -666,7 +705,7 @@ void Game::enableShaderEffects(bool enabled)
 		{
 			allBubbles[i]->setParent(sceneRoot_.get());
 			nc::Sprite *bubbleSprite = allBubbles[i]->sprite();
-			eventHandler_->shaderEffects().setBubbleShader(bubbleSprite, i);
+			eventHandler_->shaderEffects().setBubbleShader(bubbleSprite, allBubbles[i]->poolIndex());
 		}
 
 		eventHandler_->shaderEffects().setupGameViewports(this, backgroundRoot_.get(), sceneRoot_.get(), foregroundRoot_.get());
@@ -714,8 +753,9 @@ void Game::enableShaderEffects(bool enabled)
 			nc::Sprite *bubbleSprite = allBubbles[i]->sprite();
 			nc::Texture *bubbleTex = resourceManager().retrieveTexture(Cfg::Textures::Bubbles[allBubbles[i]->variant()]);
 			bubbleSprite->setTexture(bubbleTex);
+			bubbleSprite->setTexRect(nc::Recti(0, 0, bubbleTex->width(), bubbleTex->height()));
 			allBubbles[i]->setParent(this);
-			eventHandler_->shaderEffects().clearBubbleShader(i);
+			eventHandler_->shaderEffects().clearBubbleShader(allBubbles[i]->poolIndex());
 		}
 
 		eventHandler_->shaderEffects().resetViewports();

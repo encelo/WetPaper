@@ -53,3 +53,7 @@ You can find the original version here: https://globalgamejam.org/games/2025/pap
 
 - Add joystick vibration when the user pops a bubble
 - Add an entry in the controls menu page to enable or disable joystick vibration
+
+- Add a fullscreen toggle (also working when the custom refraction shader is enabled)
+- Move the player count selection in the main menu page
+- Make the unselected menu entries rendered consistently when toggling the custom refraction shader

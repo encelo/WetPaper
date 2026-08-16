@@ -15,6 +15,7 @@ namespace {
 	char const *const SettingsMusicVolumeString = "musicVolume";
 	char const *const SettingsNumPlayersString = "numPlayers";
 	char const *const SettingsMatchTimeString = "matchTime";
+	char const *const SettingsFullscreenString = "fullscreen";
 	char const *const SettingsWithShadersString = "withShaders";
 	char const *const SettingsWithVibrationString = "withVibration";
 	char const *const SettingsWindowStateString = "windowState";
@@ -99,6 +100,7 @@ bool Serializer::loadSettings(Settings &settings)
 		settings.musicVolume = toml::find_or<float>(data, SettingsMusicVolumeString, defaultSettings.musicVolume);
 		settings.numPlayers = toml::find_or<unsigned int>(data, SettingsNumPlayersString, defaultSettings.numPlayers);
 		settings.matchTime = toml::find_or<unsigned int>(data, SettingsMatchTimeString, defaultSettings.matchTime);
+		settings.fullscreen = toml::find_or<bool>(data, SettingsFullscreenString, defaultSettings.fullscreen);
 		settings.withShaders = toml::find_or<bool>(data, SettingsWithShadersString, defaultSettings.withShaders);
 		settings.withVibration = toml::find_or<bool>(data, SettingsWithVibrationString, defaultSettings.withVibration);
 
@@ -125,6 +127,7 @@ bool Serializer::saveSettings(const Settings &settings)
 		{ SettingsMusicVolumeString, settings.musicVolume },
 		{ SettingsNumPlayersString, settings.numPlayers },
 		{ SettingsMatchTimeString, settings.matchTime },
+		{ SettingsFullscreenString, settings.fullscreen },
 		{ SettingsWithShadersString, settings.withShaders },
 		{ SettingsWithVibrationString, settings.withVibration }
 	});

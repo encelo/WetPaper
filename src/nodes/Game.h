@@ -31,6 +31,7 @@ class Game : public LogicNode
 	void drawGui();
 
 	void onFrameStart();
+	void onResizeWindow(int width, int height);
 	void onQuitRequest();
 
 	static void playSound();
@@ -88,6 +89,7 @@ class Game : public LogicNode
 	static MenuPage::PageConfig quitConfirmationEndMatchPage_;
 
 	void loadScene();
+	void layoutForScreenSize(const nc::Vector2f &screenTopRight);
 	void spawnBubbles();
 	void spawnBubble();
 	void destroyDeadBubbles();

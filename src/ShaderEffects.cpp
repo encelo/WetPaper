@@ -59,6 +59,52 @@ void ShaderEffects::onDrawViewport(nc::Viewport &viewport)
 	}
 }
 
+void ShaderEffects::onResizeWindow(int width, int height)
+{
+	if (initialized_ == false)
+		return;
+
+	// Textures are resized in place and viewports are re-pointed at them
+	texture0_->init("Ping texture", nc::Texture::Format::RGB8, width, height);
+	texture1_->init("Pong texture", nc::Texture::Format::RGB8, width, height);
+	textureFront_->init("Front texture", nc::Texture::Format::RGBA8, width, height);
+	textureExtra_->init("Extra texture", nc::Texture::Format::RGBA8, width, height);
+
+	backViewport_->removeAllTextures();
+	backViewport_->setTexture(texture0_.get());
+	sceneViewport_->removeAllTextures();
+	sceneViewport_->setTexture(textureExtra_.get());
+	blendingViewportBack_->removeAllTextures();
+	blendingViewportBack_->setTexture(texture0_.get());
+	pingViewport_->removeAllTextures();
+	pingViewport_->setTexture(texture1_.get());
+	pongViewport_->removeAllTextures();
+	pongViewport_->setTexture(texture0_.get());
+	frontViewport_->removeAllTextures();
+	frontViewport_->setTexture(textureFront_.get());
+	blendingViewportFront_->removeAllTextures();
+	blendingViewportFront_->setTexture(texture0_.get());
+
+	screenSprite_->resetTexture();
+	vpBlendingSpriteBack_->resetTexture();
+	vpPingSprite_->resetTexture();
+	vpPongSprite_->resetTexture();
+	vpBlendingSpriteFront_->resetTexture();
+
+	screenSprite_->setPosition(width * 0.5f, height * 0.5f);
+	vpBlendingSpriteBack_->setPosition(width * 0.5f, height * 0.5f);
+	vpPingSprite_->setPosition(width * 0.5f, height * 0.5f);
+	vpPongSprite_->setPosition(width * 0.5f, height * 0.5f);
+	vpBlendingSpriteFront_->setPosition(width * 0.5f, height * 0.5f);
+
+	vpPingSpriteShaderState_->setUniformFloat(nullptr, "uResolution",
+											  static_cast<float>(pingViewport_->texture()->width()),
+											  static_cast<float>(pingViewport_->texture()->height()));
+	vpPongSpriteShaderState_->setUniformFloat(nullptr, "uResolution",
+											  static_cast<float>(pongViewport_->texture()->width()),
+											  static_cast<float>(pongViewport_->texture()->height()));
+}
+
 void ShaderEffects::setupMenuViewports(nc::SceneNode *menuNode, nc::SceneNode *backgroundNode, nc::SceneNode *sceneNode, nc::SceneNode *foregroundNode)
 {
 	if (initialized_ == false || currentViewportSetup_ == ViewportSetup::MENU)
@@ -162,19 +208,26 @@ void ShaderEffects::setBubbleShader(nc::Sprite *sprite, unsigned int index)
 	vpDispersionShaderState_[index]->setShader(vpDispersionShader_.get());
 	vpDispersionShaderState_[index]->setUniformFloat(nullptr, "winResolution", static_cast<float>(nc::theApplication().width()), static_cast<float>(nc::theApplication().height()));
 
+	// If the sprite is already displaying `texture0_`, texture unit 1 must be left untouched then
+	const bool alreadyShaded = (sprite->texture() == texture0_.get());
+
 	// Storing old values before altering the sprite
 	const nc::Texture *spriteTexture = sprite->texture();
 	const nc::Vector2f spriteSize = sprite->absSize();
+	const float absScaleX = sprite->absScale().x;
 
 	// Set the sprite texture, then the texture rectangle, then its size
 	sprite->setTexture(texture0_.get());
 	sprite->setTexRect(nc::Recti(0, 0, texture0_->width(), texture0_->height()));
-	sprite->setSize(spriteSize * 1.0f / sprite->absScale().x);
+	sprite->setSize(spriteSize * 1.0f / absScaleX);
 
 	vpDispersionShaderState_[index]->setTexture(0, texture0_.get()); // GL_TEXTURE0
-	vpDispersionShaderState_[index]->setUniformInt(nullptr, "uTexture", 0); // GL_TEXTURE0
-	vpDispersionShaderState_[index]->setTexture(1, spriteTexture); // GL_TEXTURE1
-	vpDispersionShaderState_[index]->setUniformInt(nullptr, "uTexture1", 1); // GL_TEXTURE1
+	vpDispersionShaderState_[index]->setUniformInt(nullptr, "uTexture0", 0); // GL_TEXTURE0
+	if (alreadyShaded == false)
+	{
+		vpDispersionShaderState_[index]->setTexture(1, spriteTexture); // GL_TEXTURE1
+		vpDispersionShaderState_[index]->setUniformInt(nullptr, "uTexture1", 1); // GL_TEXTURE1
+	}
 }
 
 void ShaderEffects::clearBubbleShader(unsigned int index)

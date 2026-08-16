@@ -9,6 +9,7 @@ struct Settings
 	float musicVolume = 1.0f;
 	unsigned int numPlayers = 1;
 	unsigned int matchTime = 60;
+	bool fullscreen = false;
 	bool withShaders = true;
 	bool withVibration = true;
 

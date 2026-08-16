@@ -62,19 +62,20 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	Serializer::loadStatistics(statistics_);
 
 	config.window.position = nc::Vector2i(settings_.windowState.x, settings_.windowState.y);
+	config.window.fullscreen = settings_.fullscreen;
 
 	config.window.title = "Wet Paper";
 	config.window.iconFilename = "icon48.png";
 #ifndef NCPROJECT_DEBUG
 	config.logging.consoleLevel = nc::ILogger::LogLevel::OFF;
-	config.window.resolution = Cfg::Game::Resolution;
+	config.window.resolution = settings_.fullscreen ? nc::Vector2i(0, 0) : Cfg::Game::Resolution;;
 	config.window.resizable = false;
 #else
 	#ifndef __EMSCRIPTEN__
-	config.window.resizable = true; // not working when shaders are enabled
+	config.window.resizable = true;
 	#endif
 	config.logging.consoleLevel = nc::ILogger::LogLevel::INFO;
-	config.window.resolution = nc::Vector2i(settings_.windowState.w, settings_.windowState.h);
+	config.window.resolution = settings_.fullscreen ? nc::Vector2i(0, 0) : nc::Vector2i(settings_.windowState.w, settings_.windowState.h);
 #endif
 }
 
@@ -166,6 +167,15 @@ void MyEventHandler::onFrameStart()
 void MyEventHandler::onDrawViewport(nc::Viewport &viewport)
 {
 	shaderEffects_->onDrawViewport(viewport);
+}
+
+void MyEventHandler::onResizeWindow(int width, int height)
+{
+	shaderEffects_->onResizeWindow(width, height);
+	if (menu_ != nullptr)
+		menu_->onResizeWindow(width, height);
+	if (game_ != nullptr)
+		game_->onResizeWindow(width, height);
 }
 
 void MyEventHandler::onChangeScalingFactor(float factor)

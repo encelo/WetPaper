@@ -375,6 +375,6 @@ void MenuPage::setHovered(unsigned int entryNum, bool hovered)
 		if (hovered)
 			textNode.setColorF(1.0f, 1.0f, 1.0f, 1.0f);
 		else
-			textNode.setColorF(0.75f, 0.75f, 0.75f, 0.75f);
+			textNode.setColorF(0.4f, 0.4f, 0.4f, 1.0f);
 	}
 }

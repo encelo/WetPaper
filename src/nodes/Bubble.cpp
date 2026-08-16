@@ -15,8 +15,8 @@
 // CONSTRUCTORS AND DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-Bubble::Bubble(nc::SceneNode *parent, nctl::String name, nc::Vector2f pos, unsigned int variant)
-    : LogicNode(parent, name), variant_(variant)
+Bubble::Bubble(nc::SceneNode *parent, nctl::String name, nc::Vector2f pos, unsigned int variant, unsigned int poolIndex)
+    : LogicNode(parent, name), variant_(variant), poolIndex_(poolIndex)
 {
 	// Setup the physics body
 	{
@@ -90,6 +90,11 @@ void Bubble::onKilled()
 unsigned int Bubble::variant() const
 {
 	return variant_;
+}
+
+unsigned int Bubble::poolIndex() const
+{
+	return poolIndex_;
 }
 
 Body *Bubble::body()

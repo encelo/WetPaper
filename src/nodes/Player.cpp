@@ -106,7 +106,8 @@ void Player::onTick(float deltaTime)
 				if (body_->linearVelocity_.x > 0.0f)
 					body_->linearVelocity_.x *= 0.8f;
 
-				body_->linearVelocity_ += nc::Vector2f(-1.0f, 0.0f) * Cfg::Player::MaxGroundMoveSpeed;
+				// normalized against the 60fps reference this constant was tuned for
+				body_->linearVelocity_ += nc::Vector2f(-1.0f, 0.0f) * Cfg::Player::MaxGroundMoveSpeed * deltaTime * 60.0f;
 			}
 
 			if (rightDown)
@@ -114,7 +115,8 @@ void Player::onTick(float deltaTime)
 				if (body_->linearVelocity_.x < 0.0f)
 					body_->linearVelocity_.x *= 0.8f;
 
-				body_->linearVelocity_ += nc::Vector2f(1.0f, 0.0f) * Cfg::Player::MaxGroundMoveSpeed;
+				// normalized against the 60fps reference this constant was tuned for
+				body_->linearVelocity_ += nc::Vector2f(1.0f, 0.0f) * Cfg::Player::MaxGroundMoveSpeed * deltaTime * 60.0f;
 			}
 
 			if (jumpPressed)
@@ -136,7 +138,8 @@ void Player::onTick(float deltaTime)
 				if (body_->linearVelocity_.x > 0.0f)
 					body_->linearVelocity_.x *= 0.8f;
 
-				body_->linearVelocity_ += nc::Vector2f(-1.0f, 0.0f) * Cfg::Player::MaxAirMoveSpeed;
+				// normalized against the 60fps reference this constant was tuned for
+				body_->linearVelocity_ += nc::Vector2f(-1.0f, 0.0f) * Cfg::Player::MaxAirMoveSpeed * deltaTime * 60.0f;
 			}
 
 			if (rightDown)
@@ -144,7 +147,8 @@ void Player::onTick(float deltaTime)
 				if (body_->linearVelocity_.x < 0.0f)
 					body_->linearVelocity_.x *= 0.8f;
 
-				body_->linearVelocity_ += nc::Vector2f(1.0f, 0.0f) * Cfg::Player::MaxAirMoveSpeed;
+				// normalized against the 60fps reference this constant was tuned for
+				body_->linearVelocity_ += nc::Vector2f(1.0f, 0.0f) * Cfg::Player::MaxAirMoveSpeed * deltaTime * 60.0f;
 			}
 
 			if (jumpPressed && jumpCount_ < Cfg::Player::MaxJumpCount)
@@ -185,7 +189,8 @@ void Player::onTick(float deltaTime)
 		if (dashEnergy_ > 0.0f)
 		{
 			dashEnergy_ -= deltaTime;
-			body_->linearVelocity_ += dashDir_ * Cfg::Player::MaxDashVelocity;
+			// normalized against the 60fps reference this constant was tuned for
+			body_->linearVelocity_ += dashDir_ * Cfg::Player::MaxDashVelocity * deltaTime * 60.0f;
 		}
 
 		const float regen = (Cfg::Player::MaxStamina / Cfg::Player::StaminaRegenTime) * deltaTime;

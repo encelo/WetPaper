@@ -32,6 +32,7 @@ class Menu : public LogicNode
 	void onJoyMappedAxisMoved(const nc::JoyMappedAxisEvent &event);
 
 	void onFrameStart();
+	void onResizeWindow(int width, int height);
 	void onQuitRequest();
 
   private:
@@ -71,11 +72,13 @@ class Menu : public LogicNode
 	nctl::StaticArray<unsigned int, NumBubbles> bubbleVariants_;
 
 	bool requestGame_ = false;
+	bool requestFullscreenChange_ = false;
 	bool requestShaderEffectsChange_ = false;
 	bool shaderEffectsEnabled_ = false;
 	void enableShaderEffects(bool enabled);
 
 	void setupPages();
+	void layoutForScreenSize(const nc::Vector2f &screenTopRight);
 
 	static void goToMainPage();
 	static void goToSettingsPage();
@@ -88,6 +91,7 @@ class Menu : public LogicNode
 	static void settingsVolumeFunc(MenuPage::EntryEvent &event);
 	static void settingsSfxVolumeFunc(MenuPage::EntryEvent &event);
 	static void settingsMusicVolumeFunc(MenuPage::EntryEvent &event);
+	static void settingsFullscreenFunc(MenuPage::EntryEvent &event);
 	static void settingsShadersFunc(MenuPage::EntryEvent &event);
 	static void settingsVibrationFunc(MenuPage::EntryEvent &event);
 	static void keyboardControlsFunc(MenuPage::EntryEvent &event);

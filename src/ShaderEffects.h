@@ -29,6 +29,7 @@ class ShaderEffects
 
 	inline bool isInitialized() const { return initialized_; }
 	void onDrawViewport(nc::Viewport &viewport);
+	void onResizeWindow(int width, int height);
 
 	void setupMenuViewports(nc::SceneNode *menuNode, nc::SceneNode *backgroundNode, nc::SceneNode *sceneNode, nc::SceneNode *foregroundNode);
 	void setupGameViewports(nc::SceneNode *gameNode, nc::SceneNode *backgroundNode, nc::SceneNode *sceneNode, nc::SceneNode *foregroundNode);

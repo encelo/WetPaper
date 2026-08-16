@@ -30,6 +30,7 @@ class MyEventHandler :
 	void onShutdown() override;
 	void onFrameStart() override;
 	void onDrawViewport(nc::Viewport &viewport) override;
+	void onResizeWindow(int width, int height) override;
 	void onChangeScalingFactor(float factor) override;
 
 	void onKeyReleased(const nc::KeyboardEvent &event) override;

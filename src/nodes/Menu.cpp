@@ -23,6 +23,7 @@
 #include <ncine/FileSystem.h>
 #include <ncine/Random.h>
 #include <ncine/Sprite.h>
+#include <ncine/Texture.h>
 #include <ncine/Font.h>
 #include <ncine/TextNode.h>
 
@@ -257,15 +258,9 @@ Menu::Menu(SceneNode *parent, nctl::String name, MyEventHandler *eventHandler)
 	this->setScale(windowScaling);
 
 	background_ = nctl::makeUnique<nc::Sprite>(this, resourceManager().retrieveTexture(Cfg::Textures::Background));
-	background_->setPosition(screenTopRight * 0.5f);
 	background_->setLayer(Cfg::Layers::Background);
-#ifdef __EMSCRIPTEN__
-	background_->setSize(screenTopRight);
-#endif
 
 	darkForeground_ = nctl::makeUnique<nc::Sprite>(this, nullptr);
-	darkForeground_->setSize(screenTopRight);
-	darkForeground_->setPosition(screenTopRight * 0.5f);
 	darkForeground_->setColor(0, 0, 0, 128);
 	darkForeground_->setLayer(Cfg::Layers::Background + 2);
 
@@ -279,7 +274,6 @@ Menu::Menu(SceneNode *parent, nctl::String name, MyEventHandler *eventHandler)
 	gameTitleText_->setLayer(Cfg::Layers::Gui_Text);
 	gameTitleText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
 	gameTitleText_->setString("Wet Paper");
-	gameTitleText_->setPosition(screenTopRight.x * 0.5f, screenTopRight.y * 0.75f);
 
 	nctl::String versionString(64);
 	versionString.format("Wet Paper r%s.%s (%s)", VersionStrings::GitRevCount, VersionStrings::GitShortHash, VersionStrings::CompilationDate);
@@ -287,7 +281,6 @@ Menu::Menu(SceneNode *parent, nctl::String name, MyEventHandler *eventHandler)
 	versionText_->setLayer(Cfg::Layers::Gui_Text);
 	versionText_->setRenderMode(nc::Font::RenderMode::GLYPH_SPRITE);
 	versionText_->setString(versionString);
-	versionText_->setPosition(screenTopRight.x - versionText_->width() * 0.5f, versionText_->height() * 0.75f);
 
 	statusText_ = nctl::makeUnique<nc::TextNode>(this, smallFont_.get(), 64);
 	statusText_->setLayer(Cfg::Layers::Gui_Text);
@@ -296,9 +289,10 @@ Menu::Menu(SceneNode *parent, nctl::String name, MyEventHandler *eventHandler)
 
 	menuPage_ = nctl::makeUnique<MenuPage>(this, "MenuPage");
 	menuPagePtr = menuPage_.get();
-	menuPage_->setPosition(screenTopRight * Cfg::Menu::MenuPageRelativePos);
 	setupPages();
 	menuPage_->setup(mainPage_);
+
+	layoutForScreenSize(screenTopRight);
 
 	for (unsigned int i = 0; i < NumBubbles; i++)
 	{
@@ -400,6 +394,12 @@ void Menu::drawGui()
 #if NCINE_WITH_IMGUI && defined(NCPROJECT_DEBUG)
 	ImGui::Text("Version: r%s.%s (%s)", VersionStrings::GitRevCount, VersionStrings::GitShortHash, VersionStrings::CompilationDate);
 
+	if (ImGui::Button("Toggle fullscreen"))
+	{
+		Settings &settings = eventHandler_->settingsMut();
+		settings.fullscreen = !settings.fullscreen;
+		requestFullscreenChange_ = true;
+	}
 	if (ImGui::Button("Toggle shaders"))
 	{
 		Settings &settings = eventHandler_->settingsMut();
@@ -524,6 +524,16 @@ void Menu::onJoyMappedAxisMoved(const nc::JoyMappedAxisEvent &event)
 
 void Menu::onFrameStart()
 {
+	if (requestFullscreenChange_)
+	{
+		const bool goingFullscreen = eventHandler_->settings().fullscreen;
+		nc::IGfxDevice &gfxDevice = nc::theApplication().gfxDevice();
+		gfxDevice.setFullscreen(goingFullscreen);
+		if (goingFullscreen == false)
+			gfxDevice.setWindowSize(Cfg::Game::Resolution.x, Cfg::Game::Resolution.y);
+		requestFullscreenChange_ = false;
+	}
+
 	if (requestShaderEffectsChange_)
 	{
 		enableShaderEffects(eventHandler_->settings().withShaders);
@@ -541,6 +551,22 @@ void Menu::onFrameStart()
 	{
 		requestShaderEffectsChange_ = true;
 		deferShaderEffectsChange = false;
+	}
+}
+
+void Menu::onResizeWindow(int width, int height)
+{
+	layoutForScreenSize(nc::Vector2f(static_cast<float>(width), static_cast<float>(height)));
+
+	// All bubbles need to be rebound so that their materials point at the
+	// new ping-pong textures set by `ShaderEffects::onResizeWindow()`.
+	if (shaderEffectsEnabled_)
+	{
+		for (unsigned int i = 0; i < NumBubbles; i++)
+		{
+			nc::Sprite *bubble = bubbles_[i].get();
+			eventHandler_->shaderEffects().setBubbleShader(bubble, i);
+		}
 	}
 }
 
@@ -569,7 +595,7 @@ void Menu::enableShaderEffects(bool enabled)
 		menuPage_->setParent(foregroundRoot_.get());
 
 		background_->setFlippedY(true);
-		darkForeground_->setAlpha(128 + 52);
+		darkForeground_->setAlpha(128 + 53);
 
 		for (unsigned int i = 0; i < NumBubbles; i++)
 		{
@@ -597,6 +623,7 @@ void Menu::enableShaderEffects(bool enabled)
 			nc::Sprite *bubble = bubbles_[i].get();
 			nc::Texture *tex = resourceManager().retrieveTexture(Cfg::Textures::Bubbles[bubbleVariants_[i]]);
 			bubble->setTexture(tex);
+			bubble->setTexRect(nc::Recti(0, 0, tex->width(), tex->height()));
 			bubble->setParent(this);
 			eventHandler_->shaderEffects().clearBubbleShader(i);
 		}
@@ -624,6 +651,7 @@ void Menu::setupPages()
 	// Main menu page
 	{
 		MenuPage::PageEntry startEntry("Start", reinterpret_cast<void *>(SimpleSelectEntry::START_GAME), Menu::simpleSelectFunc, selectEventReplyBits);
+		MenuPage::PageEntry playersEntry("Players", nullptr, Menu::settingsPlayersFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry settingsEntry("Settings", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_SETTINGS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 		MenuPage::PageEntry statisticsEntry("Statistics", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_STATISTICS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 		MenuPage::PageEntry creditsEntry("Credits", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CREDITS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
@@ -631,6 +659,7 @@ void Menu::setupPages()
 
 		mainPage_ = {}; // clear the static variable
 		mainPage_.entries.pushBack(startEntry);
+		mainPage_.entries.pushBack(playersEntry);
 		mainPage_.entries.pushBack(settingsEntry);
 		mainPage_.entries.pushBack(statisticsEntry);
 		mainPage_.entries.pushBack(creditsEntry);
@@ -651,11 +680,11 @@ void Menu::setupPages()
 
 	// Settings page
 	{
-		MenuPage::PageEntry playersEntry("Players", nullptr, Menu::settingsPlayersFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry matchTimeEntry("Match Time", nullptr, Menu::settingsMatchTimeFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry volumeEntry("Volume", nullptr, Menu::settingsVolumeFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry sfxVolumeEntry("SFX Volume", nullptr, Menu::settingsSfxVolumeFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry musicVolumeEntry("Music Volume", nullptr, Menu::settingsMusicVolumeFunc, leftRightTextEventReplyBits);
+		MenuPage::PageEntry fullscreenEntry("Fullscreen", nullptr, Menu::settingsFullscreenFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry shadersEntry("Shaders", nullptr, Menu::settingsShadersFunc, leftRightTextEventReplyBits);
 		MenuPage::PageEntry controlsEntry("Controls", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_CONTROLS_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
 		MenuPage::PageEntry backEntry("Back", reinterpret_cast<void *>(SimpleSelectEntry::GOTO_MAIN_PAGE), Menu::simpleSelectFunc, selectEventReplyBits);
@@ -665,11 +694,11 @@ void Menu::setupPages()
 			shadersEntry = MenuPage::PageEntry("Shaders: n/a", nullptr);
 
 		settingsPage_ = {}; // clear the static variable
-		settingsPage_.entries.pushBack(playersEntry);
 		settingsPage_.entries.pushBack(matchTimeEntry);
 		settingsPage_.entries.pushBack(volumeEntry);
 		settingsPage_.entries.pushBack(sfxVolumeEntry);
 		settingsPage_.entries.pushBack(musicVolumeEntry);
+		settingsPage_.entries.pushBack(fullscreenEntry);
 		settingsPage_.entries.pushBack(shadersEntry);
 		settingsPage_.entries.pushBack(controlsEntry);
 		settingsPage_.entries.pushBack(backEntry);
@@ -834,6 +863,20 @@ void Menu::setupPages()
 	initAssignedKeys();
 	initInvalidButtons();
 	initAssignedGamepadControls();
+}
+
+void Menu::layoutForScreenSize(const nc::Vector2f &screenTopRight)
+{
+	background_->setPosition(screenTopRight * 0.5f);
+	background_->setSize(screenTopRight);
+
+	darkForeground_->setSize(screenTopRight);
+	darkForeground_->setPosition(screenTopRight * 0.5f);
+
+	gameTitleText_->setPosition(screenTopRight.x * 0.5f, screenTopRight.y * 0.75f);
+	versionText_->setPosition(screenTopRight.x - versionText_->width() * 0.5f, versionText_->height() * 0.75f);
+
+	menuPage_->setPosition(screenTopRight * Cfg::Menu::MenuPageRelativePos);
 }
 
 void Menu::goToMainPage()
@@ -1082,6 +1125,46 @@ void Menu::settingsMusicVolumeFunc(MenuPage::EntryEvent &event)
 	const bool volumeChanged = genericSettingsVolumeFunc(event, settingsMut.musicVolume, "Music Volume");
 	if (volumeChanged)
 		menuPtr->eventHandler_->musicManager().updateVolume();
+}
+
+void Menu::settingsFullscreenFunc(MenuPage::EntryEvent &event)
+{
+	FATAL_ASSERT(menuPtr != nullptr);
+	const Settings &settings = menuPtr->eventHandler_->settings();
+	bool fullscreen = settings.fullscreen;
+
+	switch (event.type)
+	{
+		case MenuPage::EventType::LEFT:
+			fullscreen = false;
+			break;
+		case MenuPage::EventType::RIGHT:
+			fullscreen = true;
+			break;
+		default:
+			break;
+	}
+
+	switch (event.type)
+	{
+		case MenuPage::EventType::LEFT:
+		case MenuPage::EventType::RIGHT:
+			if (fullscreen != settings.fullscreen)
+			{
+				Settings &settingsMut = menuPtr->eventHandler_->settingsMut();
+				settingsMut.fullscreen = fullscreen;
+				menuPtr->requestFullscreenChange_ = true;
+				event.shouldUpdateEntryText = true;
+			}
+			break;
+		case MenuPage::EventType::TEXT:
+		{
+			event.entryText.format(fullscreen ? "< Fullscreen: on" : "Fullscreen: off >");
+			break;
+		}
+		default:
+			break;
+	}
 }
 
 void Menu::settingsShadersFunc(MenuPage::EntryEvent &event)
