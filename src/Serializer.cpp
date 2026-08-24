@@ -1,7 +1,6 @@
 #include "Serializer.h"
 #include "Config.h"
 
-#ifndef __EMSCRIPTEN__
 #include <toml.hpp>
 #include <nctl/String.h>
 #include <nctl/UniquePtr.h>
@@ -51,7 +50,6 @@ namespace {
 		};
 	}
 }
-#endif
 
 Serializer &serializer()
 {
@@ -63,7 +61,6 @@ Serializer &serializer()
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-#ifndef __EMSCRIPTEN__
 bool Serializer::loadSettings(Settings &settings)
 {
 	// Initialize the window state rectangle with sane values
@@ -121,13 +118,20 @@ bool Serializer::loadSettings(Settings &settings)
 
 bool Serializer::saveSettings(const Settings &settings)
 {
+#ifdef __EMSCRIPTEN__
+	// Always saving the fullscreen flag as false on Emscripten, as entering real browser fullscreen requires a user gesture
+	const bool persistedFullscreen = false;
+#else
+	const bool persistedFullscreen = settings.fullscreen;
+#endif
+
 	toml::value data = toml::value(toml::table{
 		{ SettingsVolumeString, settings.volume },
 		{ SettingsSfxVolumeString, settings.sfxVolume },
 		{ SettingsMusicVolumeString, settings.musicVolume },
 		{ SettingsNumPlayersString, settings.numPlayers },
 		{ SettingsMatchTimeString, settings.matchTime },
-		{ SettingsFullscreenString, settings.fullscreen },
+		{ SettingsFullscreenString, persistedFullscreen },
 		{ SettingsWithShadersString, settings.withShaders },
 		{ SettingsWithVibrationString, settings.withVibration }
 	});
@@ -249,27 +253,6 @@ bool Serializer::saveStatistics(const Statistics &statistics)
 	file->close();
 	return true;
 }
-#else
-bool Serializer::loadSettings(Settings &settings)
-{
-	return false;
-}
-
-bool Serializer::saveSettings(const Settings &settings)
-{
-	return false;
-}
-
-bool Serializer::loadStatistics(Statistics &statistics)
-{
-	return false;
-}
-
-bool Serializer::saveStatistics(const Statistics &statistics)
-{
-	return false;
-}
-#endif
 
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS

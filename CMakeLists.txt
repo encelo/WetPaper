@@ -90,17 +90,15 @@ function(callback_before_target)
 endfunction()
 
 function(callback_after_target)
-	if(NOT EMSCRIPTEN)
-		include(FetchContent)
-		FetchContent_Declare(
-			toml11
-			GIT_REPOSITORY https://github.com/ToruNiina/toml11.git
-			GIT_TAG        v4.4.0
-		)
-		FetchContent_MakeAvailable(toml11)
+	include(FetchContent)
+	FetchContent_Declare(
+		toml11
+		GIT_REPOSITORY https://github.com/ToruNiina/toml11.git
+		GIT_TAG        v4.4.0
+	)
+	FetchContent_MakeAvailable(toml11)
 
-		target_link_libraries(${NCPROJECT_EXE_NAME} PRIVATE toml11::toml11)
-	endif()
+	target_link_libraries(${NCPROJECT_EXE_NAME} PRIVATE toml11::toml11)
 endfunction()
 
 function(callback_end)
